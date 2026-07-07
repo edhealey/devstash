@@ -16,6 +16,11 @@ Not Started
 
 <!-- Any extra notes -->
 
+### Git History
+
+- `5410ad6` — Initial commit from Create Next App
+- `674c48b` — changes before building devstash
+
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
