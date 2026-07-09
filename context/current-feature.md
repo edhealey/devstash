@@ -1,6 +1,6 @@
 # Current Feature
 
-Dashboard UI Phase 1
+<!-- Feature name -->
 
 ## Status
 
@@ -12,22 +12,7 @@ Completed
 
 <!-- Goals & requirements -->
 
-Phase 1 of 3 for the dashboard UI layout. Build the foundational layout using
-`@context/screenshots/dashboard-ui-main.png` as a visual reference.
-
-- ShadCN UI initialization and component installation
-- Dashboard route at `/dashboard`
-- Main dashboard layout and any global styles
-- Dark mode by default
-- Top bar with search and new item button (display only)
-- Placeholder sidebar and main area — just an `h2` with "Sidebar" and "Main" for now
-
 ## Notes
-
-References: `@context/features/dashboard-phase-1-spec.md`,
-`@context/screenshots/dashboard-ui-main.png`, `@src/lib/mock-data.ts`.
-Later phases: `@context/features/dashboard-phase-2-spec.md`,
-`@context/features/dashboard-phase-3-spec.md`.
 
 <!-- Any extra notes -->
 
@@ -44,3 +29,8 @@ Later phases: `@context/features/dashboard-phase-2-spec.md`,
 - Dashboard UI Phase 1 — ShadCN init (radix / Nova preset), `/dashboard` route with
   layout shell, dark mode by default, top bar (search + New Collection / New Item,
   display only), placeholder Sidebar and Main. Build passes; verified in browser.
+- Dashboard UI Phase 2 — full sidebar from mock data: Types group (links to
+  `/items/TYPE`), Collections group (Favorites + Recent), collapsible sections, user
+  avatar/settings footer. Collapsible inline rail on desktop, overlay drawer on mobile
+  via `SidebarProvider` context; top bar toggle wired up. Build + lint pass; verified
+  in browser (desktop collapse, mobile drawer, link navigation).

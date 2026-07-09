@@ -1,16 +1,22 @@
+"use client";
+
 import { FolderPlus, PanelLeft, Plus, Search } from "lucide-react";
 
+import { useSidebar } from "@/components/dashboard/SidebarProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// Phase 1: display only. Search and buttons are not yet wired up.
+// Search and New buttons are display only; the toggle controls the sidebar.
 export function Topbar() {
+  const { toggle } = useSidebar();
+
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-4">
       <Button
         variant="ghost"
         size="icon"
         aria-label="Toggle sidebar"
+        onClick={toggle}
         className="text-muted-foreground"
       >
         <PanelLeft className="size-5" />
