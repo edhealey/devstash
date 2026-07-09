@@ -2,8 +2,6 @@
 
 <!-- Feature name -->
 
-Dashboard UI Phase 3 — Main Area
-
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
@@ -13,28 +11,6 @@ Completed
 ## Goals
 
 <!-- Goals & requirements -->
-
-Phase 3 of 3 for the dashboard UI layout. Build the main content area to the right of
-the sidebar. Use the mock data from `@src/lib/mock-data.js` (import directly until the
-database is implemented). Reference `@context/screenshots/dashboard-ui-main.png` for
-layout.
-
-Requirements:
-
-- Main area to the right of the sidebar
-- Recent collections
-- Pinned items
-- 10 recent items
-- 4 stats cards at the top: number of items, collections, favorite items, and favorite
-  collections (not in screenshot)
-
-References:
-
-- @context/features/dashboard-phase-3-spec.md
-- @context/screenshots/dashboard-ui-main.png
-- @src/lib/mock-data.js
-- @context/features/dashboard-phase-1-spec.md
-- @context/features/dashboard-phase-2-spec.md
 
 ## Notes
 
