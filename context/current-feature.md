@@ -2,8 +2,6 @@
 
 <!-- Feature name -->
 
-Dashboard Collections — Live Data
-
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
@@ -14,23 +12,9 @@ Completed
 
 <!-- Goals & requirements -->
 
-Replace the dummy collection data in the dashboard main area (right side) with real
-data from the Neon database via Prisma. Keep the existing design — the 6 cards of
-recent collections stay visually the same, sourced from the DB instead of
-`src/lib/mock-data.ts`. Do not render the items underneath yet (later phase).
-
-- Create `src/lib/db/collections.ts` with data fetching functions
-- Fetch collections directly in the server component
-- Collection card border color derived from the most-used content type in that collection
-- Show small icons of all types present in that collection
-- Keep the current design (reference `context/screenshots/dashboard-ui-main.png`)
-- Update the collection stats display to reflect real data
-
 ## Notes
 
 <!-- Any extra notes -->
-
-Spec: `context/features/dashboard-collections-spec.md`
 
 ## History
 
