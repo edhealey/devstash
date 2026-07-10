@@ -1,6 +1,6 @@
 # Current Feature
 
-Seed Sample Data — Demo User, Collections & Items
+<!-- Feature name -->
 
 ## Status
 
@@ -12,37 +12,9 @@ Completed
 
 <!-- Goals & requirements -->
 
-Populate the database with realistic sample data for development and demos by
-expanding `prisma/seed.ts`. Spec: `@context/features/seed-spec.md`.
-
-- **Demo user** — email `demo@devstash.io`, name `Demo User`, password `12345678`
-  hashed with **bcryptjs (12 rounds)**, `isPro: false`, `emailVerified` set to now.
-- **System item types** — keep the 7 system types (snippet, prompt, command, note,
-  file, image, link), all `isSystem: true`.
-- **Collections & items** owned by the demo user:
-  - **React Patterns** (_Reusable React patterns and hooks_) — 3 TypeScript snippets
-    (custom hooks, component patterns, utility functions).
-  - **AI Workflows** (_AI prompts and workflow automations_) — 3 prompts (code review,
-    documentation generation, refactoring assistance).
-  - **DevOps** (_Infrastructure and deployment resources_) — 1 snippet (Docker/CI-CD
-    config), 1 command (deployment script), 2 links (real documentation URLs).
-  - **Terminal Commands** (_Useful shell commands for everyday development_) — 4
-    commands (git, docker, process management, package manager).
-  - **Design Resources** (_UI/UX resources and references_) — 4 links, real URLs
-    (CSS/Tailwind reference, component library, design system, icon library).
-- Wire items to collections via `ItemCollection`; set each item's `contentType`,
-  `language` (for snippets), and `url` (for links) appropriately.
-- Make the seed **idempotent** (upsert / clear-then-insert) so it can be re-run safely.
-- Install `bcryptjs` (+ types) if not already present.
-
 ## Notes
 
 <!-- Any extra notes -->
-
-- Seed runs via `npx prisma db seed` → `tsx prisma/seed.ts` (configured in
-  `prisma.config.ts`). Import `PrismaClient` from `@/generated/prisma/client` through
-  the `src/lib/prisma.ts` singleton pattern already established.
-- Use real, working URLs for all link items.
 
 ## History
 
