@@ -2,6 +2,8 @@
 
 <!-- Feature name -->
 
+Dashboard Collections — Live Data
+
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
@@ -12,9 +14,23 @@ Completed
 
 <!-- Goals & requirements -->
 
+Replace the dummy collection data in the dashboard main area (right side) with real
+data from the Neon database via Prisma. Keep the existing design — the 6 cards of
+recent collections stay visually the same, sourced from the DB instead of
+`src/lib/mock-data.ts`. Do not render the items underneath yet (later phase).
+
+- Create `src/lib/db/collections.ts` with data fetching functions
+- Fetch collections directly in the server component
+- Collection card border color derived from the most-used content type in that collection
+- Show small icons of all types present in that collection
+- Keep the current design (reference `context/screenshots/dashboard-ui-main.png`)
+- Update the collection stats display to reflect real data
+
 ## Notes
 
 <!-- Any extra notes -->
+
+Spec: `context/features/dashboard-collections-spec.md`
 
 ## History
 
@@ -52,3 +68,15 @@ Completed
   Resources 4 links — real URLs). Idempotent: clears the demo user's collections/items
   before re-inserting (ItemCollection removed via cascade). Ran `npx prisma db seed`
   twice against the Neon dev branch → stable 5 collections / 18 items. Build + lint pass.
+- Dashboard Collections — Live Data — DONE on `feature/dashboard-collections`. Replaced the
+  mock collection data + stats in the dashboard main area with live Prisma reads (still
+  scoped to the seeded demo user until NextAuth lands). Added `src/lib/db/collections.ts`
+  (`getRecentCollections` → per-collection item count, distinct type names, dominant type;
+  `getDashboardStats` → item/collection/favorite counts) and `src/lib/item-types.ts`
+  (system item-type styling keyed by DB type name — icon + icon color + accent border,
+  Tailwind classes, no inline styles). `CollectionCard` now derives its accent border from
+  the most-used type and renders an icon per type present; `StatsCards` takes a `stats`
+  prop; `dashboard/page.tsx` is an async server component (`force-dynamic`) fetching stats
+  + collections in parallel. Items sections (Pinned/Recent) still on mock — deferred per
+  spec. Build + lint pass; verified in browser (18 items / 5 collections, correct
+  dominant-type borders + per-type icons).

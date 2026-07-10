@@ -4,14 +4,18 @@ import { Pin } from "lucide-react";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemRow } from "@/components/dashboard/ItemRow";
 import { StatsCards } from "@/components/dashboard/StatsCards";
-import { collections, items } from "@/lib/mock-data";
+import { getDashboardStats, getRecentCollections } from "@/lib/db/collections";
+import { items } from "@/lib/mock-data";
+
+// Dashboard reads live data, so opt out of static prerendering.
+export const dynamic = "force-dynamic";
 
 // Recent-first ordering for items; mock data is small so this is inexpensive.
+// Items are still mock data — they'll be wired to the database in a later phase.
 const itemsByRecent = [...items].sort(
   (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
 );
 
-const recentCollections = collections.slice(0, 6);
 const pinnedItems = items.filter((item) => item.isPinned);
 const recentItems = itemsByRecent.slice(0, 10);
 
@@ -42,7 +46,12 @@ function SectionHeader({
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [stats, recentCollections] = await Promise.all([
+    getDashboardStats(),
+    getRecentCollections(6),
+  ]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-10 p-6">
       <header>
@@ -52,7 +61,7 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      <StatsCards />
+      <StatsCards stats={stats} />
 
       <section>
         <SectionHeader title="Collections" href="/collections" />
