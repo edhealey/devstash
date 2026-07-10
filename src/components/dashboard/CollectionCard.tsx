@@ -1,17 +1,25 @@
 import Link from "next/link";
-import { File, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
-import { getItemType, typeIcons } from "@/lib/type-icons";
-import { type Collection } from "@/lib/mock-data";
+import { type CollectionCardData } from "@/lib/db/collections";
+import { getSystemTypeStyle } from "@/lib/item-types";
 import { cn } from "@/lib/utils";
 
-export function CollectionCard({ collection }: { collection: Collection }) {
+export function CollectionCard({
+  collection,
+}: {
+  collection: CollectionCardData;
+}) {
+  const accentColor = collection.dominantType
+    ? getSystemTypeStyle(collection.dominantType).borderColor
+    : "border-l-border";
+
   return (
     <Link
       href={`/collections/${collection.id}`}
       className={cn(
         "flex flex-col gap-3 rounded-xl border border-l-4 border-border bg-card p-5 transition-colors hover:bg-accent/50",
-        collection.accentColor
+        accentColor
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -28,20 +36,20 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         </div>
       </div>
 
-      <p className="line-clamp-2 text-sm text-muted-foreground">
-        {collection.description}
-      </p>
+      {collection.description && (
+        <p className="line-clamp-2 text-sm text-muted-foreground">
+          {collection.description}
+        </p>
+      )}
 
       <div className="mt-auto flex items-center gap-2 pt-1">
-        {collection.typeIds.map((typeId) => {
-          const type = getItemType(typeId);
-          if (!type) return null;
-          const Icon = typeIcons[type.icon] ?? File;
+        {collection.typeNames.map((typeName) => {
+          const { icon: Icon, iconColor } = getSystemTypeStyle(typeName);
           return (
             <Icon
-              key={typeId}
-              className={cn("size-4", type.color)}
-              aria-label={type.name}
+              key={typeName}
+              className={cn("size-4", iconColor)}
+              aria-label={typeName}
             />
           );
         })}

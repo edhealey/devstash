@@ -1,7 +1,7 @@
 import { Folder, FolderHeart, Star, type LucideIcon } from "lucide-react";
 import { Files } from "lucide-react";
 
-import { collections, items } from "@/lib/mock-data";
+import { type DashboardStats } from "@/lib/db/collections";
 
 interface Stat {
   label: string;
@@ -10,37 +10,32 @@ interface Stat {
   color: string;
 }
 
-const stats: Stat[] = [
-  {
-    label: "Items",
-    value: items.length,
-    icon: Files,
-    color: "text-blue-400",
-  },
-  {
-    label: "Collections",
-    value: collections.length,
-    icon: Folder,
-    color: "text-purple-400",
-  },
-  {
-    label: "Favorite Items",
-    value: items.filter((item) => item.isFavorite).length,
-    icon: Star,
-    color: "text-yellow-400",
-  },
-  {
-    label: "Favorite Collections",
-    value: collections.filter((collection) => collection.isFavorite).length,
-    icon: FolderHeart,
-    color: "text-pink-400",
-  },
-];
+export function StatsCards({ stats }: { stats: DashboardStats }) {
+  const cards: Stat[] = [
+    { label: "Items", value: stats.items, icon: Files, color: "text-blue-400" },
+    {
+      label: "Collections",
+      value: stats.collections,
+      icon: Folder,
+      color: "text-purple-400",
+    },
+    {
+      label: "Favorite Items",
+      value: stats.favoriteItems,
+      icon: Star,
+      color: "text-yellow-400",
+    },
+    {
+      label: "Favorite Collections",
+      value: stats.favoriteCollections,
+      icon: FolderHeart,
+      color: "text-pink-400",
+    },
+  ];
 
-export function StatsCards() {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {stats.map(({ label, value, icon: Icon, color }) => (
+      {cards.map(({ label, value, icon: Icon, color }) => (
         <div
           key={label}
           className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
