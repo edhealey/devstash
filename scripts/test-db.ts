@@ -47,6 +47,41 @@ async function main() {
     console.log(`  - ${type.name} (${type.icon}, ${type.color})`);
   }
 
+  // 4. Fetch the seeded demo user with their collections and items.
+  const demoUser = await prisma.user.findUnique({
+    where: { email: "demo@devstash.io" },
+    include: {
+      collections: {
+        orderBy: { name: "asc" },
+        include: {
+          items: {
+            orderBy: { item: { title: "asc" } },
+            include: { item: { include: { itemType: true } } },
+          },
+        },
+      },
+    },
+  });
+
+  if (!demoUser) {
+    throw new Error(
+      "Demo user (demo@devstash.io) not found. Run `npx prisma db seed` first.",
+    );
+  }
+
+  console.log("\nDemo user:");
+  console.log(`  ${demoUser.name} <${demoUser.email}>`);
+  console.log(`  isPro: ${demoUser.isPro}, emailVerified: ${demoUser.emailVerified?.toISOString() ?? "null"}`);
+  console.log(`  collections: ${demoUser.collections.length}`);
+
+  for (const collection of demoUser.collections) {
+    console.log(`\n  📁 ${collection.name} — ${collection.description ?? ""}`);
+    for (const { item } of collection.items) {
+      const detail = item.url ?? item.language ?? item.itemType.name;
+      console.log(`     - [${item.itemType.name}] ${item.title} (${detail})`);
+    }
+  }
+
   console.log("\n✅ Database test complete.");
 }
 

@@ -1,66 +1,48 @@
 # Current Feature
 
-Database Setup — Prisma 7 + Neon PostgreSQL
+Seed Sample Data — Demo User, Collections & Items
 
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
 
-In Progress
+Completed
 
 ## Goals
 
 <!-- Goals & requirements -->
 
-Set up Prisma ORM with a Neon (serverless) PostgreSQL database.
+Populate the database with realistic sample data for development and demos by
+expanding `prisma/seed.ts`. Spec: `@context/features/seed-spec.md`.
 
-- Use **Prisma 7** — read the full upgrade guide first; it has breaking changes
-  (https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7).
-- Use Neon PostgreSQL (serverless). Work against a **development branch** in
-  `DATABASE_URL`, with a separate production branch.
-- Create the initial schema based on the data models in `@context/project-overview.md`
-  (this will evolve): User, Item, ItemType, Collection, ItemCollection, Tag, plus the
-  `ContentType` enum.
-- Include the NextAuth models: Account, Session, VerificationToken.
-- Add appropriate indexes and cascade deletes (per the schema in project-overview.md).
-- Seed the system item types (snippet, prompt, command, note, file, image, link).
-- **ALWAYS create migrations** (`prisma migrate dev`) — never `prisma db push` or direct
-  DB edits unless explicitly specified.
+- **Demo user** — email `demo@devstash.io`, name `Demo User`, password `12345678`
+  hashed with **bcryptjs (12 rounds)**, `isPro: false`, `emailVerified` set to now.
+- **System item types** — keep the 7 system types (snippet, prompt, command, note,
+  file, image, link), all `isSystem: true`.
+- **Collections & items** owned by the demo user:
+  - **React Patterns** (_Reusable React patterns and hooks_) — 3 TypeScript snippets
+    (custom hooks, component patterns, utility functions).
+  - **AI Workflows** (_AI prompts and workflow automations_) — 3 prompts (code review,
+    documentation generation, refactoring assistance).
+  - **DevOps** (_Infrastructure and deployment resources_) — 1 snippet (Docker/CI-CD
+    config), 1 command (deployment script), 2 links (real documentation URLs).
+  - **Terminal Commands** (_Useful shell commands for everyday development_) — 4
+    commands (git, docker, process management, package manager).
+  - **Design Resources** (_UI/UX resources and references_) — 4 links, real URLs
+    (CSS/Tailwind reference, component library, design system, icon library).
+- Wire items to collections via `ItemCollection`; set each item's `contentType`,
+  `language` (for snippets), and `url` (for links) appropriately.
+- Make the seed **idempotent** (upsert / clear-then-insert) so it can be re-run safely.
+- Install `bcryptjs` (+ types) if not already present.
 
 ## Notes
 
 <!-- Any extra notes -->
 
-Spec: `@context/features/database-spec.md`. References: Prisma 7 upgrade guide and the
-Prisma Postgres quickstart.
-
-### Prisma 7 decisions (breaking changes applied)
-
-- Generator is `prisma-client` (Rust-free), not `prisma-client-js`, with a mandatory
-  `output = "../src/generated/prisma"`. Generated client is gitignored + eslint-ignored.
-- Import `PrismaClient` from `@/generated/prisma/client`, never `@prisma/client`.
-- Driver adapter required: `@prisma/adapter-pg` + `pg` (works with Neon's Postgres
-  endpoint). No Rust query engine.
-- New `prisma.config.ts` holds the datasource `url` (`env("DATABASE_URL")`) and the seed
-  command; `schema.prisma` `datasource` block only declares `provider = "postgresql"`.
-- Seeding is explicit (`npx prisma db seed` → `tsx prisma/seed.ts`).
-- `src/lib/prisma.ts` builds the adapter + client as a hot-reload-safe singleton.
-
-### Migration + seed (done, against Neon dev branch)
-
-- `npx prisma migrate dev --name init` → `prisma/migrations/20260710173646_init/` applied.
-- `npx prisma db seed` → 7 system item types inserted; verified by query (count = 7).
-- `prisma migrate status` → "Database schema is up to date!"
-
-### Remaining
-
-- For production: point `DATABASE_URL` at the production Neon branch and run
-  `npx prisma migrate deploy` (never `db push`).
-
-### Git History
-
-- `5410ad6` — Initial commit from Create Next App
-- `674c48b` — changes before building devstash
+- Seed runs via `npx prisma db seed` → `tsx prisma/seed.ts` (configured in
+  `prisma.config.ts`). Import `PrismaClient` from `@/generated/prisma/client` through
+  the `src/lib/prisma.ts` singleton pattern already established.
+- Use real, working URLs for all link items.
 
 ## History
 
@@ -81,10 +63,20 @@ Prisma Postgres quickstart.
   newest-first. Shared `type-icons` helper for consistent type icon/color rendering;
   UTC-safe date formatting. All server components. Build + lint pass; verified in
   browser (desktop + mobile responsive).
-- Database Setup (Prisma 7 + Neon) — IN PROGRESS on `feature/database-setup`. Installed
-  Prisma 7.8, `@prisma/adapter-pg`, `pg`, `dotenv`, `tsx`. Added `prisma/schema.prisma`
-  (all models + NextAuth + `ContentType` enum, indexes, cascade deletes), `prisma.config.ts`,
-  `src/lib/prisma.ts` singleton, `prisma/seed.ts`, `.env.example`. Client generates to
-  `src/generated/prisma`; build + lint pass. Ran `migrate dev --name init` (migration
+- Database Setup (Prisma 7 + Neon) — DONE, merged to main (`feature/database-setup`).
+  Installed Prisma 7.8, `@prisma/adapter-pg`, `pg`, `dotenv`, `tsx`. Added
+  `prisma/schema.prisma` (all models + NextAuth + `ContentType` enum, indexes, cascade
+  deletes), `prisma.config.ts`, `src/lib/prisma.ts` singleton, `prisma/seed.ts`,
+  `.env.example`. Generator is `prisma-client` (Rust-free) → `src/generated/prisma`;
+  driver adapter `@prisma/adapter-pg`. Ran `migrate dev --name init` (migration
   `20260710173646_init`) and `db seed` against the Neon dev branch; 7 system item types
-  verified. Migration status in sync.
+  verified; migration status in sync. Production still needs `DATABASE_URL` pointed at
+  the production Neon branch + `npx prisma migrate deploy`.
+- Seed Sample Data — DONE on `feature/seed-data`. Installed `bcryptjs` + `@types/bcryptjs`.
+  Rewrote `prisma/seed.ts`: system item types (find-then-create), demo user
+  (`demo@devstash.io`, bcryptjs 12-round hash, `isPro: false`, `emailVerified` now) via
+  upsert, and 5 collections with 18 items (React Patterns 3 snippets, AI Workflows 3
+  prompts, DevOps 1 snippet + 1 command + 2 links, Terminal Commands 4 commands, Design
+  Resources 4 links — real URLs). Idempotent: clears the demo user's collections/items
+  before re-inserting (ItemCollection removed via cascade). Ran `npx prisma db seed`
+  twice against the Neon dev branch → stable 5 collections / 18 items. Build + lint pass.
