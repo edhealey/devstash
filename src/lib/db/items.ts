@@ -2,6 +2,7 @@
 // Auth is not wired up yet, so we scope queries to the seeded demo user.
 
 import { prisma } from "@/lib/prisma";
+import { SYSTEM_TYPE_ORDER } from "@/lib/item-types";
 
 // The demo account created in prisma/seed.ts. Replace with the session user
 // once NextAuth is in place.
@@ -74,4 +75,38 @@ export async function getRecentItems(limit = 10): Promise<ItemCardData[]> {
   });
 
   return items.map(toCardData);
+}
+
+export interface ItemTypeSummary {
+  // System item-type name (e.g. "snippet"), used for icon/label styling.
+  name: string;
+  // Number of the user's items of this type.
+  count: number;
+}
+
+// Returns all seven system item types in canonical order with the user's item
+// count per type (zero-filled), for the sidebar Types group.
+export async function getSidebarItemTypes(): Promise<ItemTypeSummary[]> {
+  const [systemTypes, grouped] = await Promise.all([
+    prisma.itemType.findMany({
+      where: { isSystem: true },
+      select: { id: true, name: true },
+    }),
+    prisma.item.groupBy({
+      by: ["itemTypeId"],
+      where: { user: { email: DEMO_USER_EMAIL } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByTypeId = new Map(grouped.map((g) => [g.itemTypeId, g._count._all]));
+  const countByName = new Map<string, number>();
+  for (const type of systemTypes) {
+    countByName.set(type.name, countByTypeId.get(type.id) ?? 0);
+  }
+
+  return SYSTEM_TYPE_ORDER.map((name) => ({
+    name,
+    count: countByName.get(name) ?? 0,
+  }));
 }

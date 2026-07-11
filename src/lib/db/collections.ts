@@ -86,6 +86,52 @@ export async function getRecentCollections(
   });
 }
 
+export interface SidebarCollectionData {
+  id: string;
+  name: string;
+  isFavorite: boolean;
+  itemCount: number;
+  // Most-used item-type name, used for the recent collection's colored dot.
+  dominantType: string | null;
+}
+
+// Collections for the sidebar, split into Favorites and Recent. Recent is
+// ordered newest-first; the dominant type drives each row's colored dot.
+export async function getSidebarCollections(): Promise<{
+  favorites: SidebarCollectionData[];
+  recent: SidebarCollectionData[];
+}> {
+  const collections = await prisma.collection.findMany({
+    where: { user: { email: DEMO_USER_EMAIL } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      items: {
+        include: {
+          item: { select: { itemType: { select: { name: true } } } },
+        },
+      },
+    },
+  });
+
+  const mapped: SidebarCollectionData[] = collections.map((collection) => {
+    const typeNames = collection.items.map((ic) => ic.item.itemType.name);
+    const { dominant } = summarizeTypes(typeNames);
+
+    return {
+      id: collection.id,
+      name: collection.name,
+      isFavorite: collection.isFavorite,
+      itemCount: collection.items.length,
+      dominantType: dominant,
+    };
+  });
+
+  return {
+    favorites: mapped.filter((c) => c.isFavorite),
+    recent: mapped.filter((c) => !c.isFavorite),
+  };
+}
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const where = { user: { email: DEMO_USER_EMAIL } };
 

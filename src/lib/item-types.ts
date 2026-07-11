@@ -14,21 +14,25 @@ import {
 } from "lucide-react";
 
 export interface SystemTypeStyle {
+  // Plural display label used in the sidebar (e.g. "Snippets")
+  label: string;
   icon: LucideIcon;
   // Tailwind text color for the type icon
   iconColor: string;
   // Tailwind left-border color for a collection card accent
   borderColor: string;
+  // Tailwind background color for a filled dot / circle
+  dotColor: string;
 }
 
 export const SYSTEM_TYPE_STYLES: Record<string, SystemTypeStyle> = {
-  snippet: { icon: Code, iconColor: "text-blue-400", borderColor: "border-l-blue-500" },
-  prompt: { icon: Sparkles, iconColor: "text-purple-400", borderColor: "border-l-purple-500" },
-  command: { icon: Terminal, iconColor: "text-orange-400", borderColor: "border-l-orange-500" },
-  note: { icon: StickyNote, iconColor: "text-yellow-400", borderColor: "border-l-yellow-500" },
-  file: { icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600" },
-  image: { icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500" },
-  link: { icon: Link, iconColor: "text-green-400", borderColor: "border-l-green-500" },
+  snippet: { label: "Snippets", icon: Code, iconColor: "text-blue-400", borderColor: "border-l-blue-500", dotColor: "bg-blue-500" },
+  prompt: { label: "Prompts", icon: Sparkles, iconColor: "text-purple-400", borderColor: "border-l-purple-500", dotColor: "bg-purple-500" },
+  command: { label: "Commands", icon: Terminal, iconColor: "text-orange-400", borderColor: "border-l-orange-500", dotColor: "bg-orange-500" },
+  note: { label: "Notes", icon: StickyNote, iconColor: "text-yellow-400", borderColor: "border-l-yellow-500", dotColor: "bg-yellow-500" },
+  file: { label: "Files", icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600", dotColor: "bg-neutral-600" },
+  image: { label: "Images", icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500", dotColor: "bg-pink-500" },
+  link: { label: "Links", icon: Link, iconColor: "text-green-400", borderColor: "border-l-green-500", dotColor: "bg-green-500" },
 };
 
 // Canonical ordering for rendering type icons consistently across cards.
@@ -49,9 +53,11 @@ export function systemTypeOrderIndex(name: string): number {
 }
 
 const FALLBACK_STYLE: SystemTypeStyle = {
+  label: "Items",
   icon: File,
   iconColor: "text-muted-foreground",
   borderColor: "border-l-border",
+  dotColor: "bg-muted-foreground",
 };
 
 export function getSystemTypeStyle(name: string): SystemTypeStyle {
