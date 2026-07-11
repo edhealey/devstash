@@ -72,11 +72,13 @@ type SeedItem = {
   content?: string;
   url?: string;
   language?: string;
+  isPinned?: boolean;
 };
 
 type SeedCollection = {
   name: string;
   description: string;
+  isFavorite?: boolean;
   items: SeedItem[];
 };
 
@@ -84,11 +86,13 @@ const collections: SeedCollection[] = [
   {
     name: "React Patterns",
     description: "Reusable React patterns and hooks",
+    isFavorite: true,
     items: [
       {
         title: "useDebounce hook",
         type: "snippet",
         language: "typescript",
+        isPinned: true,
         description: "Debounce a rapidly-changing value, e.g. a search input.",
         content: `import { useEffect, useState } from "react";
 
@@ -149,10 +153,12 @@ export function cn(...inputs: ClassValue[]) {
   {
     name: "AI Workflows",
     description: "AI prompts and workflow automations",
+    isFavorite: true,
     items: [
       {
         title: "Code review prompt",
         type: "prompt",
+        isPinned: true,
         description: "Ask an LLM for a focused, actionable code review.",
         content: `You are a senior engineer doing a code review. Review the diff below for:
 1. Correctness and edge cases
@@ -253,6 +259,7 @@ CMD ["node", "dist/index.js"]`,
         title: "Undo last commit (keep changes)",
         type: "command",
         language: "bash",
+        isPinned: true,
         description: "Soft-reset the last commit, leaving files staged.",
         content: "git reset --soft HEAD~1",
       },
@@ -334,7 +341,12 @@ async function seedCollectionsAndItems(
 
   for (const col of collections) {
     const collection = await prisma.collection.create({
-      data: { name: col.name, description: col.description, userId },
+      data: {
+        name: col.name,
+        description: col.description,
+        isFavorite: col.isFavorite ?? false,
+        userId,
+      },
     });
 
     for (const item of col.items) {
@@ -351,6 +363,7 @@ async function seedCollectionsAndItems(
           url: item.url ?? null,
           description: item.description ?? null,
           language: item.language ?? null,
+          isPinned: item.isPinned ?? false,
           userId,
           itemTypeId,
           collections: { create: { collectionId: collection.id } },

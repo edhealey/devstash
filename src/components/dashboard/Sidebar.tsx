@@ -3,49 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChevronDown,
-  Code2,
-  File,
-  FileText,
-  Folder,
-  Image,
-  Layers,
-  Link2,
-  type LucideIcon,
-  Settings,
-  Sparkles,
-  Star,
-  TerminalSquare,
-} from "lucide-react";
+import { ChevronDown, Folder, Layers, Settings, Star } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSidebar } from "@/components/dashboard/SidebarProvider";
-import {
-  collections,
-  currentUser,
-  itemTypes,
-  type Collection,
-  type ItemType,
-} from "@/lib/mock-data";
+import { getSystemTypeStyle } from "@/lib/item-types";
+import { type SidebarCollectionData } from "@/lib/db/collections";
+import { type ItemTypeSummary } from "@/lib/db/items";
+import { currentUser } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-// Maps the icon names stored in mock data to lucide components.
-const typeIcons: Record<string, LucideIcon> = {
-  Code2,
-  Sparkles,
-  TerminalSquare,
-  FileText,
-  File,
-  Image,
-  Link2,
-};
-
-const favoriteCollections = collections.filter((c) => c.isFavorite);
-const recentCollections = collections.filter((c) => !c.isFavorite);
-
-function typeSlug(type: ItemType) {
-  return type.name.toLowerCase();
+interface SidebarProps {
+  types: ItemTypeSummary[];
+  favoriteCollections: SidebarCollectionData[];
+  recentCollections: SidebarCollectionData[];
 }
 
 function initials(name: string) {
@@ -86,11 +57,12 @@ function SidebarGroup({
   );
 }
 
-function TypeRow({ type }: { type: ItemType }) {
+function TypeRow({ type }: { type: ItemTypeSummary }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  const href = `/items/${typeSlug(type)}`;
-  const Icon = typeIcons[type.icon] ?? File;
+  const style = getSystemTypeStyle(type.name);
+  const href = `/items/${style.label.toLowerCase()}`;
+  const Icon = style.icon;
   const active = pathname === href;
 
   return (
@@ -102,18 +74,21 @@ function TypeRow({ type }: { type: ItemType }) {
         active && "bg-accent font-medium"
       )}
     >
-      <Icon className={cn("size-4 shrink-0", type.color)} />
-      <span className="flex-1 truncate">{type.name}</span>
+      <Icon className={cn("size-4 shrink-0", style.iconColor)} />
+      <span className="flex-1 truncate">{style.label}</span>
       <span className="text-xs text-muted-foreground">{type.count}</span>
     </Link>
   );
 }
 
-function CollectionRow({ collection }: { collection: Collection }) {
+function CollectionRow({ collection }: { collection: SidebarCollectionData }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const href = `/collections/${collection.id}`;
   const active = pathname === href;
+  const dotColor = collection.dominantType
+    ? getSystemTypeStyle(collection.dominantType).dotColor
+    : "bg-muted-foreground";
 
   return (
     <Link
@@ -129,16 +104,23 @@ function CollectionRow({ collection }: { collection: Collection }) {
       {collection.isFavorite ? (
         <Star className="size-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
       ) : (
-        <span className="text-xs text-muted-foreground">
-          {collection.itemCount}
-        </span>
+        <span
+          className={cn("size-2.5 shrink-0 rounded-full", dotColor)}
+          aria-hidden
+        />
       )}
     </Link>
   );
 }
 
 // Shared sidebar body used by both the desktop rail and the mobile drawer.
-function SidebarContent() {
+function SidebarContent({
+  types,
+  favoriteCollections,
+  recentCollections,
+}: SidebarProps) {
+  const { setOpenMobile } = useSidebar();
+
   return (
     <div className="flex h-full flex-col bg-sidebar">
       <div className="flex h-16 shrink-0 items-center gap-2 px-5">
@@ -150,26 +132,41 @@ function SidebarContent() {
 
       <div className="flex-1 overflow-y-auto py-2">
         <SidebarGroup label="Types">
-          {itemTypes.map((type) => (
-            <TypeRow key={type.id} type={type} />
+          {types.map((type) => (
+            <TypeRow key={type.name} type={type} />
           ))}
         </SidebarGroup>
 
         <div className="mx-3 my-1 border-t border-border" />
 
         <SidebarGroup label="Collections">
-          <p className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Favorites
-          </p>
-          {favoriteCollections.map((collection) => (
-            <CollectionRow key={collection.id} collection={collection} />
-          ))}
-          <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Recent
-          </p>
-          {recentCollections.map((collection) => (
-            <CollectionRow key={collection.id} collection={collection} />
-          ))}
+          {favoriteCollections.length > 0 && (
+            <>
+              <p className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Favorites
+              </p>
+              {favoriteCollections.map((collection) => (
+                <CollectionRow key={collection.id} collection={collection} />
+              ))}
+            </>
+          )}
+          {recentCollections.length > 0 && (
+            <>
+              <p className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Recent
+              </p>
+              {recentCollections.map((collection) => (
+                <CollectionRow key={collection.id} collection={collection} />
+              ))}
+            </>
+          )}
+          <Link
+            href="/collections"
+            onClick={() => setOpenMobile(false)}
+            className="mt-2 flex items-center rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            View all collections
+          </Link>
         </SidebarGroup>
       </div>
 
@@ -198,7 +195,11 @@ function SidebarContent() {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  types,
+  favoriteCollections,
+  recentCollections,
+}: SidebarProps) {
   const { open, openMobile, setOpenMobile } = useSidebar();
 
   return (
@@ -210,7 +211,11 @@ export function Sidebar() {
           open ? "md:w-64" : "md:hidden"
         )}
       >
-        <SidebarContent />
+        <SidebarContent
+          types={types}
+          favoriteCollections={favoriteCollections}
+          recentCollections={recentCollections}
+        />
       </aside>
 
       {/* Mobile: overlay drawer. */}
@@ -230,7 +235,11 @@ export function Sidebar() {
           openMobile ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarContent />
+        <SidebarContent
+          types={types}
+          favoriteCollections={favoriteCollections}
+          recentCollections={recentCollections}
+        />
       </aside>
     </>
   );

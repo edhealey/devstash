@@ -2,7 +2,7 @@
 
 <!-- Feature name -->
 
-Dashboard Items — Live Data
+Stats & Sidebar — Live Data
 
 ## Status
 
@@ -14,24 +14,25 @@ Completed
 
 <!-- Goals & requirements -->
 
-Replace the dummy item data in the dashboard main area (Pinned + Recent items) with
-live data from the Neon database via Prisma, keeping the current look and layout.
+Replace the remaining mock data (`src/lib/mock-data.ts`) driving the dashboard stats and
+sidebar with live data from the Neon database via Prisma, keeping the current
+design/layout.
 
-- Create `src/lib/db/items.ts` with data fetching functions
-- Fetch items directly in the server component (no more `src/lib/mock-data.ts`)
-- Item card icon/border derived from the item type
-- Display item type tags and everything currently shown (reference
-  `context/screenshots/dashboard-ui-main.png` if needed)
-- If there are no pinned items, the Pinned section should not display
-- Update the collection stats display
+- Display main-area stats from database data, keeping the current design/layout
+- Display system item types in the sidebar with their icons, linking to
+  `/items/[typename]`
+- Add a "View all collections" link under the collections list that goes to
+  `/collections`
+- Keep the star icon for favorite collections; for recent collections, show a colored
+  circle based on the most-used item type in that collection
+- Create `src/lib/db/items.ts` and add the database functions (use
+  `src/lib/db/collections.ts` for reference)
 
 ## Notes
 
 <!-- Any extra notes -->
 
-Spec: `context/features/dashboard-items-spec.md`. Collections + stats already moved to
-live data in the previous feature; this completes the dashboard by migrating the
-Pinned/Recent item sections off mock data.
+Spec: `context/features/stats-sidebar-spec.md`. References `src/lib/db/collections.ts`.
 
 ## History
 
@@ -94,3 +95,23 @@ Pinned/Recent item sections off mock data.
   its only consumer). Collection stats already live from the prior feature — no change.
   Build + lint pass; verified in browser (10 live recent items newest-first with type
   icons/dates; Pinned section correctly hidden since the seed has no pinned items).
+- Stats & Sidebar — Live Data — DONE on `feature/stats-sidebar`. Moved the last mock-driven
+  surface (the sidebar) onto live Prisma reads; main-area stats were already live from the
+  Dashboard Collections feature. Added `getSidebarItemTypes()` to `src/lib/db/items.ts`
+  (all seven system types in canonical order with the user's per-type item count, zero-filled
+  via `item.groupBy` + an id→name map) and `getSidebarCollections()` to
+  `src/lib/db/collections.ts` (collections split into `favorites`/`recent`, each with
+  `itemCount` + `dominantType`, reusing `summarizeTypes`). Extended `src/lib/item-types.ts`
+  `SystemTypeStyle` with a plural `label` (sidebar display / slug) and `dotColor` (filled-dot
+  bg class). `Sidebar` is now a props-driven client component (no mock import): Types rows and
+  collection dots derive icon/color/label/slug from `getSystemTypeStyle`; favorites keep the
+  star, recents show a dominant-type colored dot; added a "View all collections" link →
+  `/collections`; Favorites/Recent headers hide when empty. `dashboard/layout.tsx` is an async
+  `force-dynamic` server component fetching sidebar data and passing it down. Trimmed
+  `src/lib/mock-data.ts` to just `currentUser` (the footer, until auth). Seed updates
+  (`prisma/seed.ts`): added optional `isFavorite` on collections (React Patterns, AI Workflows)
+  and `isPinned` on items (useDebounce hook, Code review prompt, Undo last commit) so the
+  Favorites/Pinned surfaces are demonstrable; re-seeded the Neon dev branch (stable 5
+  collections / 18 items). Build + lint pass; verified in browser (live type counts + icons,
+  Favorites with stars + Recent with colored dots, "View all collections" link, and the
+  Pinned section showing the three pinned items).
