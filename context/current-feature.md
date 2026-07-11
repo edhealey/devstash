@@ -2,6 +2,8 @@
 
 <!-- Feature name -->
 
+Dashboard Items — Live Data
+
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
@@ -12,9 +14,24 @@ Completed
 
 <!-- Goals & requirements -->
 
+Replace the dummy item data in the dashboard main area (Pinned + Recent items) with
+live data from the Neon database via Prisma, keeping the current look and layout.
+
+- Create `src/lib/db/items.ts` with data fetching functions
+- Fetch items directly in the server component (no more `src/lib/mock-data.ts`)
+- Item card icon/border derived from the item type
+- Display item type tags and everything currently shown (reference
+  `context/screenshots/dashboard-ui-main.png` if needed)
+- If there are no pinned items, the Pinned section should not display
+- Update the collection stats display
+
 ## Notes
 
 <!-- Any extra notes -->
+
+Spec: `context/features/dashboard-items-spec.md`. Collections + stats already moved to
+live data in the previous feature; this completes the dashboard by migrating the
+Pinned/Recent item sections off mock data.
 
 ## History
 
@@ -64,3 +81,16 @@ Completed
   + collections in parallel. Items sections (Pinned/Recent) still on mock — deferred per
   spec. Build + lint pass; verified in browser (18 items / 5 collections, correct
   dominant-type borders + per-type icons).
+- Dashboard Items — Live Data — DONE on `feature/dashboard-items`. Replaced the mock
+  Pinned/Recent item data in the dashboard main area with live Prisma reads (still scoped
+  to the seeded demo user until NextAuth lands). Added `src/lib/db/items.ts`
+  (`getPinnedItems` → all pinned items newest-first; `getRecentItems(limit=10)` →
+  newest-first, shared `select` of only the fields a row renders + type name + tag names).
+  `ItemRow` now consumes the live `ItemCardData` shape and derives its icon/color from the
+  item type via `getSystemTypeStyle` (the DB-name-keyed helper shared with collection
+  cards); `updatedAt` is a `Date`, description renders conditionally (nullable). `dashboard/
+  page.tsx` fetches pinned + recent items in the same `Promise.all` as stats/collections;
+  dropped the `mock-data` import. Deleted now-orphaned `src/lib/type-icons.ts` (ItemRow was
+  its only consumer). Collection stats already live from the prior feature — no change.
+  Build + lint pass; verified in browser (10 live recent items newest-first with type
+  icons/dates; Pinned section correctly hidden since the seed has no pinned items).
