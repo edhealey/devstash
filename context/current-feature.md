@@ -2,37 +2,17 @@
 
 <!-- Feature name -->
 
-Stats & Sidebar — Live Data
-
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
-
-Completed
 
 ## Goals
 
 <!-- Goals & requirements -->
 
-Replace the remaining mock data (`src/lib/mock-data.ts`) driving the dashboard stats and
-sidebar with live data from the Neon database via Prisma, keeping the current
-design/layout.
-
-- Display main-area stats from database data, keeping the current design/layout
-- Display system item types in the sidebar with their icons, linking to
-  `/items/[typename]`
-- Add a "View all collections" link under the collections list that goes to
-  `/collections`
-- Keep the star icon for favorite collections; for recent collections, show a colored
-  circle based on the most-used item type in that collection
-- Create `src/lib/db/items.ts` and add the database functions (use
-  `src/lib/db/collections.ts` for reference)
-
 ## Notes
 
 <!-- Any extra notes -->
-
-Spec: `context/features/stats-sidebar-spec.md`. References `src/lib/db/collections.ts`.
 
 ## History
 
@@ -115,3 +95,12 @@ Spec: `context/features/stats-sidebar-spec.md`. References `src/lib/db/collectio
   collections / 18 items). Build + lint pass; verified in browser (live type counts + icons,
   Favorites with stars + Recent with colored dots, "View all collections" link, and the
   Pinned section showing the three pinned items).
+- Add Pro Badge to Sidebar — DONE on `feature/add-pro-badge-sidebar`. Added the ShadCN
+  `Badge` component (`npx shadcn add badge`, radix-nova style) at `src/components/ui/badge.tsx`.
+  Extended `SystemTypeStyle` in `src/lib/item-types.ts` with an optional `isPro` flag, set
+  `true` on the `file` and `image` entries (the two Pro-only system types). `Sidebar` `TypeRow`
+  now renders a subtle secondary `PRO` badge (uppercase, `h-4`/`text-[9px]`, muted text) before
+  the item count for Pro types; the count still shows for every type. No inline styles; Pro-ness
+  lives in the single-source item-types registry rather than being hardcoded in the component.
+  Build + lint pass; verified in browser (PRO badge on Files/Images alongside their counts,
+  other rows unchanged).
