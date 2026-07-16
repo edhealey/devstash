@@ -23,6 +23,8 @@ export interface SystemTypeStyle {
   borderColor: string;
   // Tailwind background color for a filled dot / circle
   dotColor: string;
+  // Pro-only feature (File and Image types)
+  isPro?: boolean;
 }
 
 export const SYSTEM_TYPE_STYLES: Record<string, SystemTypeStyle> = {
@@ -30,8 +32,8 @@ export const SYSTEM_TYPE_STYLES: Record<string, SystemTypeStyle> = {
   prompt: { label: "Prompts", icon: Sparkles, iconColor: "text-purple-400", borderColor: "border-l-purple-500", dotColor: "bg-purple-500" },
   command: { label: "Commands", icon: Terminal, iconColor: "text-orange-400", borderColor: "border-l-orange-500", dotColor: "bg-orange-500" },
   note: { label: "Notes", icon: StickyNote, iconColor: "text-yellow-400", borderColor: "border-l-yellow-500", dotColor: "bg-yellow-500" },
-  file: { label: "Files", icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600", dotColor: "bg-neutral-600" },
-  image: { label: "Images", icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500", dotColor: "bg-pink-500" },
+  file: { label: "Files", icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600", dotColor: "bg-neutral-600", isPro: true },
+  image: { label: "Images", icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500", dotColor: "bg-pink-500", isPro: true },
   link: { label: "Links", icon: Link, iconColor: "text-green-400", borderColor: "border-l-green-500", dotColor: "bg-green-500" },
 };
 

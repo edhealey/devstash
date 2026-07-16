@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, Folder, Layers, Settings, Star } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "@/components/dashboard/SidebarProvider";
 import { getSystemTypeStyle } from "@/lib/item-types";
 import { type SidebarCollectionData } from "@/lib/db/collections";
@@ -76,6 +77,14 @@ function TypeRow({ type }: { type: ItemTypeSummary }) {
     >
       <Icon className={cn("size-4 shrink-0", style.iconColor)} />
       <span className="flex-1 truncate">{style.label}</span>
+      {style.isPro && (
+        <Badge
+          variant="secondary"
+          className="h-4 px-1.5 text-[9px] font-semibold tracking-wide text-muted-foreground"
+        >
+          PRO
+        </Badge>
+      )}
       <span className="text-xs text-muted-foreground">{type.count}</span>
     </Link>
   );
