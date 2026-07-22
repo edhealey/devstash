@@ -21,3 +21,21 @@ npm run lint    # ESLint (flat config)
 ```
 
 There is no test setup in this project yet.
+
+## Neon MCP
+
+When using Neon MCP tools for this project, ALWAYS target:
+
+- **Project:** `devstash` — `flat-pine-29089439`
+- **Branch:** `development` — `br-soft-voice-admxcdl2` (pass as `branchId`)
+
+Rules:
+
+- Default every Neon query/operation to the **development** branch. Always pass
+  `branchId: br-soft-voice-admxcdl2` explicitly — do not rely on the default branch,
+  which is production.
+- **NEVER** touch the `production` branch (`br-snowy-moon-admkpl1o`) unless I
+  explicitly name production in my request. This includes reads.
+- If a request would hit production and I haven't said so, stop and ask first.
+- Never run destructive SQL (DROP, DELETE, TRUNCATE, UPDATE/INSERT without an
+  explicit go-ahead) on any branch.
