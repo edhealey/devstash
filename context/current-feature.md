@@ -1,27 +1,16 @@
-# Current Feature: Auth Credentials — Email/Password Provider
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add a NextAuth Credentials provider for email/password sign-in alongside the existing GitHub OAuth.
-- Support user registration via a `POST /api/auth/register` API route.
-- Hash passwords with bcryptjs (already installed); store on the existing `User.password` field (add via migration only if missing).
-- Keep the edge-safe split-config pattern intact: placeholder in `auth.config.ts`, real bcrypt validation override in `auth.ts`.
-- Email/password sign-in redirects to `/dashboard`; GitHub OAuth continues to work.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-### Spec: Auth Credentials — Email/Password Provider
-
-- **Requirements:** bcryptjs for hashing; add `password` field to User model via migration if not already there; Credentials provider placeholder in `auth.config.ts`; real bcrypt validation override in `auth.ts`; registration route at `/api/auth/register`.
-- **Registration API (`POST /api/auth/register`):** accept `name`, `email`, `password`, `confirmPassword`; validate passwords match; check if user already exists; hash password with bcryptjs; create user; return success/error response.
-- **Split pattern:** `auth.config.ts` → Credentials provider with `authorize: () => null` placeholder (edge-safe); `auth.ts` → override the Credentials provider with actual bcrypt validation logic.
-- **Testing:** curl the register route; then `/api/auth/signin` → sign in with email/password → verify redirect to `/dashboard`; verify GitHub OAuth still works.
-- **Reference:** Credentials provider — https://authjs.dev/getting-started/authentication/credentials
-- Note: `User.password` already exists in the Prisma schema (from initial migration), so a new migration is likely unnecessary — verify during implementation.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -126,3 +115,24 @@ In Progress
   `[...nextauth]` route compile). Live GitHub OAuth round-trip not exercised locally (no OAuth
   credentials set) — redirect logic and build verified; the sign-in flow still needs a manual
   browser pass once `AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` are configured.
+- Auth Credentials — Email/Password Provider — DONE on `feature/auth-credentials`, merged to
+  main. Credentials provider added with the edge-safe split pattern: `auth.config.ts` holds a
+  placeholder (`authorize: () => null`), `auth.ts` overrides it (matched by provider id) with
+  real bcryptjs validation (`user.email` lowercased lookup + `bcrypt.compare`). `User.password`
+  already existed → no migration. Registration API `POST /api/auth/register` validates
+  name/email/password/confirmPassword, checks for an existing user, hashes with bcryptjs
+  (12 rounds), and returns `{ success, data|error }` with proper status codes (400/409/201/500).
+  Custom auth UI in an `(auth)` route group: `/login` and `/register` are `force-dynamic`
+  server components rendering client forms (`LoginForm`/`RegisterForm`); `pages.signIn` and the
+  proxy now point at `/login` (with `callbackUrl`, sanitized against open redirects). Login uses
+  `signIn("credentials", { redirect: false })` with inline errors + a "Continue with GitHub"
+  button (inline GitHub SVG since lucide dropped the brand icon). Register POSTs the API, shows a
+  sonner success toast ("Account created! You can now log in."), and redirects to `/login`.
+  Added the ShadCN `sonner` toast (`Toaster` in the root layout, pinned dark, `next-themes`
+  removed) and a `signOutAction` server action; the sidebar footer now shows the real session
+  user (via `auth()` in `dashboard/layout.tsx`) with a working sign-out, replacing the mock
+  `currentUser`. Root page set to `force-dynamic` so all app pages server-render on demand.
+  Build + lint pass; verified in browser (register → toast → `/login`; credentials login →
+  `/dashboard`; sign-out → `/`; proxy redirect to `/login`; footer shows the logged-in user).
+  Note: dashboard data is still scoped to the seeded demo user until per-user queries land;
+  GitHub OAuth still needs live credentials for a real round-trip.
