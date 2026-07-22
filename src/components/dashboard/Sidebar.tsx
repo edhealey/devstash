@@ -3,26 +3,33 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Folder, Layers, Settings, Star } from "lucide-react";
+import { ChevronDown, Folder, Layers, LogOut, Star } from "lucide-react";
 
+import { signOutAction } from "@/actions/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useSidebar } from "@/components/dashboard/SidebarProvider";
 import { getSystemTypeStyle } from "@/lib/item-types";
 import { type SidebarCollectionData } from "@/lib/db/collections";
 import { type ItemTypeSummary } from "@/lib/db/items";
-import { currentUser } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
+interface SidebarUser {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface SidebarProps {
+  user: SidebarUser | null;
   types: ItemTypeSummary[];
   favoriteCollections: SidebarCollectionData[];
   recentCollections: SidebarCollectionData[];
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
+function initials(value: string) {
+  return value
+    .split(/\s+/)
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
@@ -124,11 +131,13 @@ function CollectionRow({ collection }: { collection: SidebarCollectionData }) {
 
 // Shared sidebar body used by both the desktop rail and the mobile drawer.
 function SidebarContent({
+  user,
   types,
   favoriteCollections,
   recentCollections,
 }: SidebarProps) {
   const { setOpenMobile } = useSidebar();
+  const displayName = user?.name?.trim() || user?.email || "Account";
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -181,30 +190,34 @@ function SidebarContent({
 
       <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-3">
         <Avatar>
-          {currentUser.avatarUrl && (
-            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-          )}
-          <AvatarFallback>{initials(currentUser.name)}</AvatarFallback>
+          {user?.image && <AvatarImage src={user.image} alt={displayName} />}
+          <AvatarFallback>{initials(displayName)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{currentUser.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {currentUser.email}
-          </p>
+          <p className="truncate text-sm font-medium">{displayName}</p>
+          {user?.email && (
+            <p className="truncate text-xs text-muted-foreground">
+              {user.email}
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          aria-label="Settings"
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <Settings className="size-4" />
-        </button>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            aria-label="Sign out"
+            title="Sign out"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </form>
       </div>
     </div>
   );
 }
 
 export function Sidebar({
+  user,
   types,
   favoriteCollections,
   recentCollections,
@@ -221,6 +234,7 @@ export function Sidebar({
         )}
       >
         <SidebarContent
+          user={user}
           types={types}
           favoriteCollections={favoriteCollections}
           recentCollections={recentCollections}
@@ -245,6 +259,7 @@ export function Sidebar({
         )}
       >
         <SidebarContent
+          user={user}
           types={types}
           favoriteCollections={favoriteCollections}
           recentCollections={recentCollections}
