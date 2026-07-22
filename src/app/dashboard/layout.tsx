@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
 import { Topbar } from "@/components/dashboard/Topbar";
@@ -12,7 +13,8 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [types, { favorites, recent }] = await Promise.all([
+  const [session, types, { favorites, recent }] = await Promise.all([
+    auth(),
     getSidebarItemTypes(),
     getSidebarCollections(),
   ]);
@@ -21,6 +23,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden">
         <Sidebar
+          user={session?.user ?? null}
           types={types}
           favoriteCollections={favorites}
           recentCollections={recent}

@@ -5,14 +5,14 @@ import { authConfig } from "@/auth.config";
 // so the proxy stays lightweight.
 const { auth } = NextAuth(authConfig);
 
-// Protect the dashboard: send unauthenticated users to NextAuth's default
-// sign-in page, preserving where they were headed via callbackUrl.
+// Protect the dashboard: send unauthenticated users to the custom sign-in
+// page, preserving where they were headed via callbackUrl.
 export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
   const isOnDashboard = req.nextUrl.pathname.startsWith("/dashboard");
 
   if (isOnDashboard && !isLoggedIn) {
-    const signInUrl = new URL("/api/auth/signin", req.nextUrl.origin);
+    const signInUrl = new URL("/login", req.nextUrl.origin);
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
     return Response.redirect(signInUrl);
   }

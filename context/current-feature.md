@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Auth Credentials — Email/Password Provider
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a NextAuth Credentials provider for email/password sign-in alongside the existing GitHub OAuth.
+- Support user registration via a `POST /api/auth/register` API route.
+- Hash passwords with bcryptjs (already installed); store on the existing `User.password` field (add via migration only if missing).
+- Keep the edge-safe split-config pattern intact: placeholder in `auth.config.ts`, real bcrypt validation override in `auth.ts`.
+- Email/password sign-in redirects to `/dashboard`; GitHub OAuth continues to work.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+### Spec: Auth Credentials — Email/Password Provider
+
+- **Requirements:** bcryptjs for hashing; add `password` field to User model via migration if not already there; Credentials provider placeholder in `auth.config.ts`; real bcrypt validation override in `auth.ts`; registration route at `/api/auth/register`.
+- **Registration API (`POST /api/auth/register`):** accept `name`, `email`, `password`, `confirmPassword`; validate passwords match; check if user already exists; hash password with bcryptjs; create user; return success/error response.
+- **Split pattern:** `auth.config.ts` → Credentials provider with `authorize: () => null` placeholder (edge-safe); `auth.ts` → override the Credentials provider with actual bcrypt validation logic.
+- **Testing:** curl the register route; then `/api/auth/signin` → sign in with email/password → verify redirect to `/dashboard`; verify GitHub OAuth still works.
+- **Reference:** Credentials provider — https://authjs.dev/getting-started/authentication/credentials
+- Note: `User.password` already exists in the Prisma schema (from initial migration), so a new migration is likely unnecessary — verify during implementation.
+
+## History
 
 - Project setup and boilerplate cleanup
 - Dashboard UI Phase 1 — ShadCN init (radix / Nova preset), `/dashboard` route with
