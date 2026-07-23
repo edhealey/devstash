@@ -22,12 +22,14 @@ interface LoginFormProps {
   callbackUrl: string;
   initialError?: string;
   verified?: boolean;
+  reset?: boolean;
 }
 
 export function LoginForm({
   callbackUrl,
   initialError,
   verified,
+  reset,
 }: LoginFormProps) {
   const router = useRouter();
   const [error, setError] = useState(
@@ -81,6 +83,12 @@ export function LoginForm({
         </p>
       )}
 
+      {reset && (
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+          Password updated — you can sign in now.
+        </p>
+      )}
+
       <Button
         type="button"
         variant="outline"
@@ -114,9 +122,17 @@ export function LoginForm({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             name="password"

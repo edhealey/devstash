@@ -17,15 +17,17 @@ export default async function LoginPage({
     callbackUrl?: string | string[];
     error?: string;
     verified?: string;
+    reset?: string;
   }>;
 }) {
-  const { callbackUrl, error, verified } = await searchParams;
+  const { callbackUrl, error, verified, reset } = await searchParams;
 
   return (
     <LoginForm
       callbackUrl={safeCallbackUrl(callbackUrl)}
       initialError={error}
       verified={verified === "1"}
+      reset={reset === "1"}
     />
   );
 }
