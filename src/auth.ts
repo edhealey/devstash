@@ -1,9 +1,10 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
+import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth-errors";
 
 // Full config: the edge-safe providers/callbacks plus the Prisma adapter.
 // The adapter persists users/accounts on OAuth sign-in; sessions stay in a JWT.
@@ -11,6 +12,13 @@ import { authConfig } from "@/auth.config";
 // The Credentials provider from auth.config.ts is a placeholder (authorize
 // returns null). Here — in the Node runtime, where bcrypt and Prisma are
 // available — we swap it for one that actually validates email/password.
+// Surfaces as `code` on the signIn() result so the login form can tell an
+// unverified account apart from bad credentials. Safe to expose: it is only
+// thrown after the password has already been verified.
+class EmailNotVerifiedError extends CredentialsSignin {
+  code = EMAIL_NOT_VERIFIED_CODE;
+}
+
 const credentials = Credentials({
   credentials: {
     email: { label: "Email", type: "email" },
@@ -33,6 +41,12 @@ const credentials = Credentials({
     const passwordMatches = await bcrypt.compare(password, user.password);
     if (!passwordMatches) {
       return null;
+    }
+
+    // Checked only after the password matches, so a stranger guessing emails
+    // learns nothing about which addresses are registered.
+    if (!user.emailVerified) {
+      throw new EmailNotVerifiedError();
     }
 
     return {

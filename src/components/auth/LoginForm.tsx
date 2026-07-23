@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth-errors";
 
 function GitHubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -20,18 +21,25 @@ function GitHubIcon(props: React.SVGProps<SVGSVGElement>) {
 interface LoginFormProps {
   callbackUrl: string;
   initialError?: string;
+  verified?: boolean;
 }
 
-export function LoginForm({ callbackUrl, initialError }: LoginFormProps) {
+export function LoginForm({
+  callbackUrl,
+  initialError,
+  verified,
+}: LoginFormProps) {
   const router = useRouter();
   const [error, setError] = useState(
     initialError ? "Something went wrong. Please try again." : ""
   );
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setNeedsVerification(false);
     setPending(true);
 
     const formData = new FormData(event.currentTarget);
@@ -42,7 +50,14 @@ export function LoginForm({ callbackUrl, initialError }: LoginFormProps) {
     });
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      // The password was right but the account is unverified — say so, and
+      // point them at a fresh link.
+      if (result.code === EMAIL_NOT_VERIFIED_CODE) {
+        setNeedsVerification(true);
+        setError("Verify your email address before signing in.");
+      } else {
+        setError("Invalid email or password.");
+      }
       setPending(false);
       return;
     }
@@ -59,6 +74,12 @@ export function LoginForm({ callbackUrl, initialError }: LoginFormProps) {
           Sign in to your DevStash account
         </p>
       </div>
+
+      {verified && (
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+          Email verified — you can sign in now.
+        </p>
+      )}
 
       <Button
         type="button"
@@ -106,7 +127,22 @@ export function LoginForm({ callbackUrl, initialError }: LoginFormProps) {
           />
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive">
+            {error}
+            {needsVerification && (
+              <>
+                {" "}
+                <Link
+                  href="/verify-email"
+                  className="font-medium underline underline-offset-2"
+                >
+                  Send a new link
+                </Link>
+              </>
+            )}
+          </p>
+        )}
 
         <Button type="submit" size="lg" className="w-full" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" />}
