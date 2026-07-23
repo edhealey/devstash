@@ -1,40 +1,16 @@
-# Current Feature: Toggle Email Verification via Env Flag
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add an env variable that turns the email-verification requirement on/off
-  (default: on, preserving current behavior).
-- When **disabled**, new credentials accounts are created already verified
-  (`emailVerified` set at creation) and no verification email is sent.
-- When **disabled**, login is not blocked for unverified accounts (the
-  `EmailNotVerifiedError` gate in `authorize` is bypassed).
-- When **enabled**, behavior is exactly as it is today (issue link on register,
-  block login until verified).
-- Single source of truth for the flag so both the register route and the auth
-  `authorize` callback read the same value; no duplicated env parsing.
-- Document the flag in `.env.example`.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- Motivation: no domain is linked to Resend yet, so Resend's test sender
-  (`onboarding@resend.dev`) only delivers to the account owner's address —
-  meaning nobody else can complete verification. The flag lets us disable the
-  gate for local/dev/demo use until a verified domain is configured.
-- Two enforcement points to guard behind the flag:
-  1. `src/app/api/auth/register/route.ts` — sets `emailVerified: null` and calls
-     `issueVerificationEmail`.
-  2. `src/auth.ts` `authorize` — throws `EmailNotVerifiedError` when
-     `!user.emailVerified`.
-- Flag likely lives in a small helper (e.g. `src/lib/`) that reads a single env
-  var (default enabled). Env var read in the Node runtime only — the auth check
-  is in `auth.ts` (full config), not the edge `auth.config.ts`.
-- Proposed env var: `EMAIL_VERIFICATION_ENABLED` (default `true`; set to
-  `false` to disable). Final name TBD at implementation.
-- No schema/migration change expected.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -190,3 +166,22 @@ In Progress
   Real Resend delivery confirmed end-to-end against the account owner's address. Note: the
   register/resend routes use the existing route's manual validation rather than Zod (Zod isn't
   a dependency) — worth revisiting if Zod lands project-wide.
+- Toggle Email Verification via Env Flag — DONE on `feature/toggle-email-verification`, merged to
+  main. Added a single source-of-truth helper `src/lib/email-verification.ts`
+  (`isEmailVerificationEnabled()` — reads `EMAIL_VERIFICATION_ENABLED` at call time, defaults ON;
+  returns `false` only for the literal string `false`, case-insensitive) so the two enforcement
+  points and the resend route share one env read. When the gate is **off**: the register route
+  (`src/app/api/auth/register/route.ts`) creates the account already verified
+  (`emailVerified: new Date()`) and skips `issueVerificationEmail`; the `authorize` login gate in
+  `src/auth.ts` becomes `isEmailVerificationEnabled() && !user.emailVerified`, so unverified
+  accounts aren't blocked; `POST /api/auth/resend-verification` short-circuits with the same silent
+  200 as the account-doesn't-exist path. The register response now carries `verificationEnabled`,
+  and `RegisterForm` branches on it — off → "Account created! You can now log in." + `/login`
+  (instead of the "couldn't send email" → `/verify-email` path). No schema/migration change; helper
+  is imported only in Node-runtime files (never the edge `auth.config.ts`). Motivation: no domain is
+  linked to Resend yet, so its test sender only delivers to the account owner — the flag lets
+  local/dev/demo skip the gate until a verified domain is configured. Documented
+  `EMAIL_VERIFICATION_ENABLED=true` in `.env.example`. Build + lint pass; verified in browser with
+  the flag disabled (register `flagtest@example.com` → `/login`, not `/verify-email` → immediate
+  login → `/dashboard`; DB confirmed `emailVerified` stamped at creation), then cleaned up the test
+  account via `npm run db:purge`. The enabled default is unchanged, already-tested behavior.
