@@ -1,16 +1,40 @@
-# Current Feature
+# Current Feature: Toggle Email Verification via Env Flag
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Add an env variable that turns the email-verification requirement on/off
+  (default: on, preserving current behavior).
+- When **disabled**, new credentials accounts are created already verified
+  (`emailVerified` set at creation) and no verification email is sent.
+- When **disabled**, login is not blocked for unverified accounts (the
+  `EmailNotVerifiedError` gate in `authorize` is bypassed).
+- When **enabled**, behavior is exactly as it is today (issue link on register,
+  block login until verified).
+- Single source of truth for the flag so both the register route and the auth
+  `authorize` callback read the same value; no duplicated env parsing.
+- Document the flag in `.env.example`.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- Motivation: no domain is linked to Resend yet, so Resend's test sender
+  (`onboarding@resend.dev`) only delivers to the account owner's address —
+  meaning nobody else can complete verification. The flag lets us disable the
+  gate for local/dev/demo use until a verified domain is configured.
+- Two enforcement points to guard behind the flag:
+  1. `src/app/api/auth/register/route.ts` — sets `emailVerified: null` and calls
+     `issueVerificationEmail`.
+  2. `src/auth.ts` `authorize` — throws `EmailNotVerifiedError` when
+     `!user.emailVerified`.
+- Flag likely lives in a small helper (e.g. `src/lib/`) that reads a single env
+  var (default enabled). Env var read in the Node runtime only — the auth check
+  is in `auth.ts` (full config), not the edge `auth.config.ts`.
+- Proposed env var: `EMAIL_VERIFICATION_ENABLED` (default `true`; set to
+  `false` to disable). Final name TBD at implementation.
+- No schema/migration change expected.
 
 ## History
 

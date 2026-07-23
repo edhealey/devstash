@@ -21,6 +21,7 @@ export function RegisterForm() {
 
     const formData = new FormData(event.currentTarget);
     let emailSent = false;
+    let verificationEnabled = true;
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -42,9 +43,17 @@ export function RegisterForm() {
       }
 
       emailSent = data.data?.emailSent === true;
+      verificationEnabled = data.data?.verificationEnabled !== false;
     } catch {
       setError("Something went wrong. Please try again.");
       setPending(false);
+      return;
+    }
+
+    // Verification off: the account is usable right away, no email involved.
+    if (!verificationEnabled) {
+      toast.success("Account created! You can now log in.");
+      router.push("/login");
       return;
     }
 

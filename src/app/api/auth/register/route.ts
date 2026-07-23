@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { issueVerificationEmail } from "@/lib/verification";
+import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -82,23 +83,29 @@ export async function POST(request: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const verificationEnabled = isEmailVerificationEnabled();
 
-    // emailVerified stays null until the user clicks the link we send below.
+    // With verification on, emailVerified stays null until the user clicks the
+    // link we send below. With it off, the account is usable immediately.
     const user = await prisma.user.create({
       data: {
         name: trimmedName,
         email: normalizedEmail,
         password: hashedPassword,
+        emailVerified: verificationEnabled ? null : new Date(),
       },
       select: { id: true, name: true, email: true },
     });
 
-    // A send failure isn't fatal — the account exists and the user can request
-    // a new link from /verify-email.
-    const emailSent = await issueVerificationEmail(user.email, user.name);
+    // Only send a link when verification is required. A send failure isn't
+    // fatal — the account exists and the user can request a new link from
+    // /verify-email.
+    const emailSent = verificationEnabled
+      ? await issueVerificationEmail(user.email, user.name)
+      : false;
 
     return NextResponse.json(
-      { success: true, data: { ...user, emailSent } },
+      { success: true, data: { ...user, emailSent, verificationEnabled } },
       { status: 201 }
     );
   } catch (error) {
