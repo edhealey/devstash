@@ -13,11 +13,19 @@ function safeCallbackUrl(value: string | string[] | undefined) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string | string[]; error?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string | string[];
+    error?: string;
+    verified?: string;
+  }>;
 }) {
-  const { callbackUrl, error } = await searchParams;
+  const { callbackUrl, error, verified } = await searchParams;
 
   return (
-    <LoginForm callbackUrl={safeCallbackUrl(callbackUrl)} initialError={error} />
+    <LoginForm
+      callbackUrl={safeCallbackUrl(callbackUrl)}
+      initialError={error}
+      verified={verified === "1"}
+    />
   );
 }

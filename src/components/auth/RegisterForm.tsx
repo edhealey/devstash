@@ -20,6 +20,7 @@ export function RegisterForm() {
     setPending(true);
 
     const formData = new FormData(event.currentTarget);
+    let emailSent = false;
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -39,15 +40,26 @@ export function RegisterForm() {
         setPending(false);
         return;
       }
+
+      emailSent = data.data?.emailSent === true;
     } catch {
       setError("Something went wrong. Please try again.");
       setPending(false);
       return;
     }
 
-    // Account created — send them to the login page and let them know.
-    toast.success("Account created! You can now log in.");
-    router.push("/login");
+    // The account exists either way; only the follow-up differs. If the email
+    // didn't go out, send them somewhere they can request another link.
+    if (emailSent) {
+      toast.success("Account created! Check your email to verify your account.");
+      router.push("/login");
+      return;
+    }
+
+    toast.error(
+      "Account created, but we couldn't send the verification email. Request a new link below."
+    );
+    router.push("/verify-email");
   }
 
   return (

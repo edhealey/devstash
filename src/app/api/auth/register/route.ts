@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { issueVerificationEmail } from "@/lib/verification";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // emailVerified stays null until the user clicks the link we send below.
     const user = await prisma.user.create({
       data: {
         name: trimmedName,
@@ -91,7 +93,14 @@ export async function POST(request: Request) {
       select: { id: true, name: true, email: true },
     });
 
-    return NextResponse.json({ success: true, data: user }, { status: 201 });
+    // A send failure isn't fatal — the account exists and the user can request
+    // a new link from /verify-email.
+    const emailSent = await issueVerificationEmail(user.email, user.name);
+
+    return NextResponse.json(
+      { success: true, data: { ...user, emailSent } },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[register] Failed to create user:", error);
     return NextResponse.json(
