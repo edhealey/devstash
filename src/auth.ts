@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth-errors";
+import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
 // Full config: the edge-safe providers/callbacks plus the Prisma adapter.
 // The adapter persists users/accounts on OAuth sign-in; sessions stay in a JWT.
@@ -44,8 +45,9 @@ const credentials = Credentials({
     }
 
     // Checked only after the password matches, so a stranger guessing emails
-    // learns nothing about which addresses are registered.
-    if (!user.emailVerified) {
+    // learns nothing about which addresses are registered. Skipped entirely
+    // when the verification gate is disabled.
+    if (isEmailVerificationEnabled() && !user.emailVerified) {
       throw new EmailNotVerifiedError();
     }
 

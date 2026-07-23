@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { issueVerificationEmail } from "@/lib/verification";
+import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  // With the gate off there's nothing to verify; stay silent like the
+  // account-doesn't-exist path so behavior is indistinguishable.
+  if (!isEmailVerificationEnabled()) {
+    return NextResponse.json({ success: true, data: null }, { status: 200 });
+  }
 
   try {
     const user = await prisma.user.findUnique({
