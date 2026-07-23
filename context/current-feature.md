@@ -136,3 +136,33 @@ Not Started
   `/dashboard`; sign-out → `/`; proxy redirect to `/login`; footer shows the logged-in user).
   Note: dashboard data is still scoped to the seeded demo user until per-user queries land;
   GitHub OAuth still needs live credentials for a real round-trip.
+- Email Verification on Register — DONE on `feature/email-verification`, merged to main.
+  Installed `resend`. New credentials accounts are created with `emailVerified: null` and get a
+  verification link; login is blocked until they confirm. `src/lib/verification.ts` issues and
+  consumes tokens against the existing `VerificationToken` model (no migration needed): a
+  32-byte random token goes in the link, only its SHA-256 hash is stored, 24h TTL, single-use
+  (the row is deleted on any match), and issuing a new token clears outstanding ones for that
+  address. `src/lib/email.ts` wraps Resend and returns a boolean instead of throwing, so a send
+  failure leaves registration at 201 and routes the user to `/verify-email` with an error toast
+  rather than a 500 (inline styles in the email HTML are the one deliberate exception to the
+  no-inline-styles rule — email clients don't support stylesheets). `GET /api/auth/verify-email`
+  consumes the token and always redirects: success (and already-verified) → `/login?verified=1`
+  with a green banner, otherwise → `/verify-email?status=expired|invalid|error`. The
+  `(auth)/verify-email` page maps that status to friendly copy and renders
+  `ResendVerificationForm`, which posts to `POST /api/auth/resend-verification` — that endpoint
+  answers identically whether or not the address is registered, so it can't enumerate accounts.
+  The unverified check in `authorize` (`src/auth.ts`) runs **after** the bcrypt compare and
+  throws a `CredentialsSignin` subclass whose `code` reaches the login form via the `signIn`
+  result; the constant lives in `src/lib/auth-errors.ts` so the client bundle doesn't import
+  Prisma/bcrypt. GitHub OAuth is not gated. Added `APP_URL` / `EMAIL_FROM` / `RESEND_API_KEY` to
+  `.env.example` (sender is Resend's test address `onboarding@resend.dev`, which only delivers
+  to the Resend account owner until a domain is verified). Also added `scripts/purge-users.ts`
+  (`npm run db:purge`, dry run by default, `--yes` to delete) for clearing test accounts.
+  Build + lint pass; verified in browser: unsendable address → graceful 201 + resend page,
+  unverified login → "Verify your email address before signing in." + resend link, wrong
+  password on the same account → generic "Invalid email or password." (no leak), valid link →
+  verified banner, replayed link → invalid, expired token → expired state, resend for an
+  unregistered address → identical non-committal reply, post-verification login → `/dashboard`.
+  Real Resend delivery confirmed end-to-end against the account owner's address. Note: the
+  register/resend routes use the existing route's manual validation rather than Zod (Zod isn't
+  a dependency) — worth revisiting if Zod lands project-wide.
