@@ -185,3 +185,34 @@ Not Started
   the flag disabled (register `flagtest@example.com` → `/login`, not `/verify-email` → immediate
   login → `/dashboard`; DB confirmed `emailVerified` stamped at creation), then cleaned up the test
   account via `npm run db:purge`. The enabled default is unchanged, already-tested behavior.
+- Forgot Password — DONE on `feature/forgot-password`, merged to main. Self-service password
+  reset that reuses the existing `VerificationToken` model (no schema/migration). New
+  `src/lib/password-reset.ts` parallels `verification.ts`: a 32-byte random token goes in the
+  emailed link, only its SHA-256 hash is stored, 1h TTL, single-use (row deleted on any reset
+  match). The `identifier` is namespaced `password-reset:<email>` so reset and verification
+  tokens can never be confused — `consumePasswordResetToken` treats a non-reset token as invalid
+  and leaves it untouched. Consuming bcrypt-hashes (12 rounds) the new password and stamps
+  `emailVerified` if it was null (completing a reset proves inbox control). `src/lib/email.ts`
+  gains `sendPasswordResetEmail` (Resend wrapper, boolean return, inline-style email HTML — the
+  sanctioned exception). `POST /api/auth/forgot-password` is non-enumerable (identical 200
+  whether or not the account exists) and only issues for accounts that actually have a password,
+  so GitHub-OAuth-only accounts get the same silent reply without erroring. `POST
+  /api/auth/reset-password` validates the token + password (≥8, match), returns the
+  `{ success, data|error }` shape, and 400s on any bad/expired/consumed token. UI follows the
+  `(auth)` group + `force-dynamic` page → client form convention: `/forgot-password`
+  (`ForgotPasswordForm`, non-committal confirmation) and `/reset-password` (`ResetPasswordForm`;
+  success → sonner toast + `/login?reset=1`, missing token → an invalid-link card pointing back
+  to `/forgot-password`). `LoginForm` gains a "Forgot password?" link by the password field and
+  a green "Password updated — you can sign in now." banner (new `reset` prop, wired from the
+  login page's `?reset=1`). Reset is independent of `EMAIL_VERIFICATION_ENABLED`. No new env
+  vars — reuses `APP_URL` / `RESEND_API_KEY` / `EMAIL_FROM`. Build + lint pass; verified in
+  browser against the seeded demo user: login link → forgot-password submit (non-committal) →
+  reset-token row created (namespaced identifier, hashed token, 1h expiry) → reset via a minted
+  link → `/login?reset=1` banner → login succeeds with the new password → token row deleted
+  (single-use) → replay rejected ("invalid or expired") → no-token page shows the invalid-link
+  card. Demo account restored to baseline via re-seed (5 collections / 18 items, password back
+  to seed value); the throwaway token-minting helper used for the browser test was deleted. Note:
+  the forgot→reset→login round-trip doesn't preserve `callbackUrl` (reset always lands on
+  `/login?reset=1`) — minor UX, not in scope. Real Resend delivery not re-exercised (test sender
+  only reaches the account owner); the send path is shared with the already-confirmed
+  verification email.
