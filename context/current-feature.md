@@ -1,37 +1,16 @@
-# Current Feature — Profile Page
+# Current Feature
 
 ## Status
 
-In Progress — implemented and verified in browser on `feature/profile-page`; awaiting
-review/commit. Build + lint pass.
+Not Started
 
 ## Goals
 
-- Create a protected profile page at `/profile` (require authentication).
-- Display user info: email, name, avatar (GitHub avatar or initials fallback), and
-  account creation date.
-- Show usage stats: total items, total collections, and a breakdown by item type
-  (snippets, prompts, notes, commands, links, files, images).
-- Add account actions:
-  - Change password — email/password users only (hidden for GitHub-OAuth-only accounts).
-  - Delete account — behind a confirmation dialog to prevent accidental deletion.
-- Follow existing codebase patterns for data fetching (server components + Prisma
-  helpers in `src/lib/db/`) and components.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- **Avatar logic:** use the GitHub avatar from OAuth (`User.image`) when available;
-  otherwise generate initials from the name, falling back to the email.
-- **Change password gating:** only show for users who signed up with email/password
-  (i.e. have a `User.password`), not GitHub OAuth. Determine via the account's provider
-  / presence of a password hash.
-- **Delete account:** confirmation dialog required; cascade deletes items/collections/
-  types (schema already has `onDelete: Cascade` on user relations).
-- **Item type breakdown:** counts for each of the seven system types, zero-filled —
-  can reuse the existing `getSidebarItemTypes()` pattern from `src/lib/db/items.ts`.
-- **Auth scoping:** dashboard data is currently still scoped to the seeded demo user;
-  confirm whether profile should read the real session user (`auth()`) or stay on the
-  demo scope for consistency before implementing.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -237,3 +216,32 @@ review/commit. Build + lint pass.
   `/login?reset=1`) — minor UX, not in scope. Real Resend delivery not re-exercised (test sender
   only reaches the account owner); the send path is shared with the already-confirmed
   verification email.
+- Profile Page — DONE on `feature/profile-page`, merged to main. Protected `/profile` showing the
+  signed-in user's info, usage stats, per-type breakdown, and account actions. This is the first
+  surface to read the **real session user** (via `auth()`), not the seeded demo scope the dashboard
+  helpers still use. New `src/lib/db/user.ts` `getUserProfile(userId)` fetches identity + item/
+  collection counts + a zero-filled per-type breakdown (same `itemType.findMany` + `item.groupBy`
+  id→name pattern as `getSidebarItemTypes`) in one `Promise.all`, returning `hasPassword` as a
+  boolean (never the hash). Server actions in `src/actions/profile.ts`: `changePasswordAction`
+  (bcrypt-compares the current password before a 12-round rehash; validates new ≥8 + match; both
+  derived from `auth()`, never a client-supplied id) and `deleteAccountAction` (cascade-deletes the
+  user via the schema's `onDelete: Cascade`, then `signOut({ redirectTo: "/" })`). The page
+  (`src/app/profile/page.tsx`, `force-dynamic`) guards with `auth()` → `redirect("/login?callbackUrl=
+  /profile")`, and renders `src/components/profile/` pieces: `ProfileHeader` (avatar → GitHub
+  `User.image` or initials from name/email, UTC-safe joined date), `ProfileStats` (items +
+  collections), `TypeBreakdown` (seven system types via `getSystemTypeStyle`), `ChangePasswordCard`
+  (client; shown only when `hasPassword`; calls the action directly, inline errors + sonner success +
+  form reset), and `DeleteAccountCard` (client; ShadCN `alert-dialog` confirmation — added via
+  `npx shadcn add alert-dialog`, radix-nova). Route protection generalized: `src/proxy.ts` now covers
+  `/dashboard` + `/profile` (prefix list + matcher). The sidebar footer user block is now a link to
+  `/profile`. Change-password gating uses `User.password != null` (GitHub-only accounts have no
+  password → card hidden); reset UI kept as the standalone focused page (not the dashboard shell) to
+  honor the spec's literal `/profile`. No schema/migration change. Build + lint pass; verified in
+  browser against the seeded demo user: live profile (18 items / 5 collections, per-type breakdown
+  sums to 18), change-password mismatch / wrong-current / successful-change-with-reset (password
+  reverted to the seed value `12345678`), delete-dialog open + cancel (demo user NOT deleted),
+  sidebar link, unauthenticated `/profile` → `/login?callbackUrl`, and re-login restoring baseline.
+  Note: post-login `callbackUrl` back to `/profile` falls to `/dashboard` because the login form's
+  open-redirect sanitizer rejects the absolute URL the proxy sets — pre-existing, identical to the
+  existing `/dashboard` behavior, not in scope. Dashboard/collections/items reads remain demo-scoped;
+  only the profile is per-user so far.
