@@ -5,13 +5,18 @@ import { authConfig } from "@/auth.config";
 // so the proxy stays lightweight.
 const { auth } = NextAuth(authConfig);
 
-// Protect the dashboard: send unauthenticated users to the custom sign-in
-// page, preserving where they were headed via callbackUrl.
+// Protect authenticated areas: send unauthenticated users to the custom
+// sign-in page, preserving where they were headed via callbackUrl.
+const PROTECTED_PREFIXES = ["/dashboard", "/profile"];
+
 export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isOnDashboard = req.nextUrl.pathname.startsWith("/dashboard");
+  const { pathname } = req.nextUrl;
+  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
 
-  if (isOnDashboard && !isLoggedIn) {
+  if (isProtected && !isLoggedIn) {
     const signInUrl = new URL("/login", req.nextUrl.origin);
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
     return Response.redirect(signInUrl);
@@ -19,5 +24,5 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/profile/:path*"],
 };

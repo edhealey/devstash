@@ -1,16 +1,37 @@
-# Current Feature
+# Current Feature — Profile Page
 
 ## Status
 
-Not Started
+In Progress — implemented and verified in browser on `feature/profile-page`; awaiting
+review/commit. Build + lint pass.
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Create a protected profile page at `/profile` (require authentication).
+- Display user info: email, name, avatar (GitHub avatar or initials fallback), and
+  account creation date.
+- Show usage stats: total items, total collections, and a breakdown by item type
+  (snippets, prompts, notes, commands, links, files, images).
+- Add account actions:
+  - Change password — email/password users only (hidden for GitHub-OAuth-only accounts).
+  - Delete account — behind a confirmation dialog to prevent accidental deletion.
+- Follow existing codebase patterns for data fetching (server components + Prisma
+  helpers in `src/lib/db/`) and components.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- **Avatar logic:** use the GitHub avatar from OAuth (`User.image`) when available;
+  otherwise generate initials from the name, falling back to the email.
+- **Change password gating:** only show for users who signed up with email/password
+  (i.e. have a `User.password`), not GitHub OAuth. Determine via the account's provider
+  / presence of a password hash.
+- **Delete account:** confirmation dialog required; cascade deletes items/collections/
+  types (schema already has `onDelete: Cascade` on user relations).
+- **Item type breakdown:** counts for each of the seven system types, zero-filled —
+  can reuse the existing `getSidebarItemTypes()` pattern from `src/lib/db/items.ts`.
+- **Auth scoping:** dashboard data is currently still scoped to the seeded demo user;
+  confirm whether profile should read the real session user (`auth()`) or stay on the
+  demo scope for consistency before implementing.
 
 ## History
 

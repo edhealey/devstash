@@ -189,18 +189,25 @@ function SidebarContent({
       </div>
 
       <div className="flex shrink-0 items-center gap-3 border-t border-border px-4 py-3">
-        <Avatar>
-          {user?.image && <AvatarImage src={user.image} alt={displayName} />}
-          <AvatarFallback>{initials(displayName)}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{displayName}</p>
-          {user?.email && (
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
-          )}
-        </div>
+        <Link
+          href="/profile"
+          onClick={() => setOpenMobile(false)}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1 -m-1 hover:bg-accent"
+          title="View profile"
+        >
+          <Avatar>
+            {user?.image && <AvatarImage src={user.image} alt={displayName} />}
+            <AvatarFallback>{initials(displayName)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{displayName}</p>
+            {user?.email && (
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            )}
+          </div>
+        </Link>
         <form action={signOutAction}>
           <button
             type="submit"
