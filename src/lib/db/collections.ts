@@ -1,12 +1,10 @@
 // Data-fetching helpers for the dashboard's Collections section.
-// Auth is not wired up yet, so we scope queries to the seeded demo user.
+// Every helper takes the session user's id as a required parameter — never a
+// default or a fallback, so a missed call site fails the build rather than
+// silently serving another account's rows.
 
 import { prisma } from "@/lib/prisma";
 import { systemTypeOrderIndex } from "@/lib/item-types";
-
-// The demo account created in prisma/seed.ts. Replace with the session user
-// once NextAuth is in place.
-const DEMO_USER_EMAIL = "demo@devstash.io";
 
 export interface CollectionCardData {
   id: string;
@@ -55,10 +53,11 @@ function summarizeTypes(typeNames: string[]): {
 }
 
 export async function getRecentCollections(
+  userId: string,
   limit = 6
 ): Promise<CollectionCardData[]> {
   const collections = await prisma.collection.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
@@ -97,12 +96,12 @@ export interface SidebarCollectionData {
 
 // Collections for the sidebar, split into Favorites and Recent. Recent is
 // ordered newest-first; the dominant type drives each row's colored dot.
-export async function getSidebarCollections(): Promise<{
+export async function getSidebarCollections(userId: string): Promise<{
   favorites: SidebarCollectionData[];
   recent: SidebarCollectionData[];
 }> {
   const collections = await prisma.collection.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     include: {
       items: {
@@ -132,8 +131,10 @@ export async function getSidebarCollections(): Promise<{
   };
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const where = { user: { email: DEMO_USER_EMAIL } };
+export async function getDashboardStats(
+  userId: string
+): Promise<DashboardStats> {
+  const where = { userId };
 
   const [items, collections, favoriteItems, favoriteCollections] =
     await Promise.all([

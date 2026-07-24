@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { auth } from "@/auth";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
@@ -13,10 +15,19 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, types, { favorites, recent }] = await Promise.all([
-    auth(),
-    getSidebarItemTypes(),
-    getSidebarCollections(),
+  // The proxy already redirects unauthenticated requests, but the sidebar
+  // queries are scoped by this id — so resolve it here rather than assuming,
+  // and bail out if it's somehow missing instead of falling back to any
+  // default scope.
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    redirect("/login?callbackUrl=/dashboard");
+  }
+
+  const [types, { favorites, recent }] = await Promise.all([
+    getSidebarItemTypes(userId),
+    getSidebarCollections(userId),
   ]);
 
   return (
