@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { issueVerificationEmail } from "@/lib/verification";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitKey,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,6 +36,17 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  // Keyed by IP + email so a single inbox can't be flooded with links. Counted
+  // for every caller, registered or not, so a 429 still reveals nothing about
+  // whether the address has an account.
+  const limit = await checkRateLimit(
+    "resendVerification",
+    rateLimitKey(getClientIp(request), normalizedEmail)
+  );
+  if (!limit.success) {
+    return rateLimitResponse(limit);
+  }
 
   // With the gate off there's nothing to verify; stay silent like the
   // account-doesn't-exist path so behavior is indistinguishable.

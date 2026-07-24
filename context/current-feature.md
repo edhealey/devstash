@@ -1,16 +1,54 @@
-# Current Feature
+# Current Feature: Rate Limiting for Auth
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Reusable rate-limiting utility at `src/lib/rate-limit.ts` backed by Upstash Redis
+  (`@upstash/ratelimit`), sliding-window algorithm, returning
+  `{ success, remaining, reset }`.
+- IP resolution from `x-forwarded-for` (Vercel) with a request fallback; compose
+  IP + email into the key where the spec calls for it.
+- Limits enforced on the five auth endpoints:
+  - login (`/api/auth/callback/credentials`) — 5 / 15 min, keyed by IP + email
+  - `/api/auth/register` — 3 / 1 hour, keyed by IP
+  - `/api/auth/forgot-password` — 3 / 1 hour, keyed by IP
+  - `/api/auth/reset-password` — 5 / 15 min, keyed by IP
+  - `/api/auth/resend-verification` — 3 / 15 min, keyed by IP + email
+- 429 responses carry `{ error: "Too many attempts. Please try again in X minutes." }`
+  plus a `Retry-After` header.
+- Frontend surfaces the limit message (toast / inline error) on each affected form.
+- Fail open: if Upstash is unreachable or unconfigured, the request is allowed.
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` documented in `.env.example`.
+- `npm run build` + `npm run lint` pass; behavior verified in the browser.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- Purpose: block brute force, credential stuffing, and abuse of the email-sending
+  endpoints (register / forgot-password / resend-verification all hit Resend).
+- Login is the awkward one — the credentials flow goes through NextAuth's
+  `/api/auth/callback/credentials` route, which we don't own. Likely enforcement
+  point is inside `authorize()` in `src/auth.ts` (Node runtime, has the email), or a
+  custom pre-check called from `LoginForm` before `signIn`. Decide during implementation.
+- Upstash free tier is 10k requests/day — enough for auth-only limiting.
+- Existing endpoints already return the `{ success, data|error }` shape and use manual
+  validation (no Zod in the project) — match that.
+- Non-enumeration behavior of forgot-password / resend-verification must be preserved;
+  rate-limit responses must not reveal whether an account exists.
+- Spec suggests rate-limiting middleware as a possible later cleanup — out of scope now.
+- Source spec: `context/features/rate-limiting-spec.md` (currently untracked).
+- **Deployment prerequisite — the host must set a trustworthy client IP header.**
+  `getClientIp` reads `x-forwarded-for` (first entry), then `x-real-ip`, then falls
+  back to the constant `"unknown"`. Two consequences:
+  - If neither header is present, every client shares the `"unknown"` bucket — that
+    would cap the whole app at 3 registrations/hour. Harmless locally (it's what the
+    curl tests exercised), but a self-inflicted outage in production.
+  - `x-forwarded-for` is client-supplied unless a trusted proxy overwrites it, so on a
+    host that only appends, an attacker mints a fresh bucket per request.
+  Vercel overwrites the header at the edge, so both are non-issues there. Any other
+  target needs the proxy configured to set it before this is load-bearing.
 
 ## History
 
