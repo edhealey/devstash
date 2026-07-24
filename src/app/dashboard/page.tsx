@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Pin } from "lucide-react";
 
+import { auth } from "@/auth";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemRow } from "@/components/dashboard/ItemRow";
 import { StatsCards } from "@/components/dashboard/StatsCards";
@@ -38,12 +40,20 @@ function SectionHeader({
 }
 
 export default async function DashboardPage() {
+  // Scope every read to the signed-in user. Resolved from the session, never
+  // from a client-supplied value.
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    redirect("/login?callbackUrl=/dashboard");
+  }
+
   const [stats, recentCollections, pinnedItems, recentItems] =
     await Promise.all([
-      getDashboardStats(),
-      getRecentCollections(6),
-      getPinnedItems(),
-      getRecentItems(10),
+      getDashboardStats(userId),
+      getRecentCollections(userId, 6),
+      getPinnedItems(userId),
+      getRecentItems(userId, 10),
     ]);
 
   return (

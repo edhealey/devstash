@@ -18,7 +18,11 @@ export const proxy = auth((req) => {
 
   if (isProtected && !isLoggedIn) {
     const signInUrl = new URL("/login", req.nextUrl.origin);
-    signInUrl.searchParams.set("callbackUrl", req.nextUrl.href);
+    // Pass the destination as a relative path. The login page only accepts
+    // same-origin relative callbacks, so an absolute URL here would be
+    // discarded and the user would land on /dashboard instead of where they
+    // were headed.
+    signInUrl.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
     return Response.redirect(signInUrl);
   }
 });

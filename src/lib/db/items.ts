@@ -1,12 +1,10 @@
 // Data-fetching helpers for the dashboard's item sections (Pinned + Recent).
-// Auth is not wired up yet, so we scope queries to the seeded demo user.
+// Every helper takes the session user's id as a required parameter — never a
+// default or a fallback, so a missed call site fails the build rather than
+// silently serving another account's rows.
 
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_TYPE_ORDER } from "@/lib/item-types";
-
-// The demo account created in prisma/seed.ts. Replace with the session user
-// once NextAuth is in place.
-const DEMO_USER_EMAIL = "demo@devstash.io";
 
 export interface ItemCardData {
   id: string;
@@ -56,9 +54,9 @@ function toCardData(item: ItemRow): ItemCardData {
   };
 }
 
-export async function getPinnedItems(): Promise<ItemCardData[]> {
+export async function getPinnedItems(userId: string): Promise<ItemCardData[]> {
   const items = await prisma.item.findMany({
-    where: { user: { email: DEMO_USER_EMAIL }, isPinned: true },
+    where: { userId, isPinned: true },
     orderBy: { updatedAt: "desc" },
     select: itemSelect,
   });
@@ -66,9 +64,12 @@ export async function getPinnedItems(): Promise<ItemCardData[]> {
   return items.map(toCardData);
 }
 
-export async function getRecentItems(limit = 10): Promise<ItemCardData[]> {
+export async function getRecentItems(
+  userId: string,
+  limit = 10
+): Promise<ItemCardData[]> {
   const items = await prisma.item.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
+    where: { userId },
     orderBy: { updatedAt: "desc" },
     take: limit,
     select: itemSelect,
@@ -86,7 +87,9 @@ export interface ItemTypeSummary {
 
 // Returns all seven system item types in canonical order with the user's item
 // count per type (zero-filled), for the sidebar Types group.
-export async function getSidebarItemTypes(): Promise<ItemTypeSummary[]> {
+export async function getSidebarItemTypes(
+  userId: string
+): Promise<ItemTypeSummary[]> {
   const [systemTypes, grouped] = await Promise.all([
     prisma.itemType.findMany({
       where: { isSystem: true },
@@ -94,7 +97,7 @@ export async function getSidebarItemTypes(): Promise<ItemTypeSummary[]> {
     }),
     prisma.item.groupBy({
       by: ["itemTypeId"],
-      where: { user: { email: DEMO_USER_EMAIL } },
+      where: { userId },
       _count: { _all: true },
     }),
   ]);
