@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth-errors";
+import { EMAIL_NOT_VERIFIED_CODE, RATE_LIMITED_CODE } from "@/lib/auth-errors";
 
 function GitHubIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -57,6 +57,8 @@ export function LoginForm({
       if (result.code === EMAIL_NOT_VERIFIED_CODE) {
         setNeedsVerification(true);
         setError("Verify your email address before signing in.");
+      } else if (result.code === RATE_LIMITED_CODE) {
+        setError("Too many sign-in attempts. Please try again in a few minutes.");
       } else {
         setError("Invalid email or password.");
       }

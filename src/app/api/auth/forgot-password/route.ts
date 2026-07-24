@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { issuePasswordResetEmail } from "@/lib/password-reset";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -9,6 +14,14 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // deliberately identical whether or not the address is registered, so this
 // can't be used to enumerate accounts.
 export async function POST(request: Request) {
+  // Keyed by IP alone so one host can't spray reset emails across many
+  // addresses. Counted before the body is read, so the limit doesn't depend on
+  // anything the caller can vary.
+  const limit = await checkRateLimit("forgotPassword", getClientIp(request));
+  if (!limit.success) {
+    return rateLimitResponse(limit);
+  }
+
   let body: unknown;
   try {
     body = await request.json();

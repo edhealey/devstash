@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { issueVerificationEmail } from "@/lib/verification";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -69,6 +74,17 @@ export async function POST(request: Request) {
       { success: false, error: "Passwords do not match." },
       { status: 400 }
     );
+  }
+
+  // Keyed by IP alone: the point is to stop one host from mass-creating
+  // accounts (each of which sends an email), so the address must not vary it.
+  // Counted only once the submission is well-formed — creating an account is
+  // what we're limiting, and a rejected one costs us neither a row nor an
+  // email. Charging for validation errors would lock someone out for an hour
+  // over a mistyped password.
+  const limit = await checkRateLimit("register", getClientIp(request));
+  if (!limit.success) {
+    return rateLimitResponse(limit);
   }
 
   try {

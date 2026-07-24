@@ -4,8 +4,14 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
-import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth-errors";
+import { EMAIL_NOT_VERIFIED_CODE, RATE_LIMITED_CODE } from "@/lib/auth-errors";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitKey,
+  resetRateLimit,
+} from "@/lib/rate-limit";
 
 // Full config: the edge-safe providers/callbacks plus the Prisma adapter.
 // The adapter persists users/accounts on OAuth sign-in; sessions stay in a JWT.
@@ -20,20 +26,37 @@ class EmailNotVerifiedError extends CredentialsSignin {
   code = EMAIL_NOT_VERIFIED_CODE;
 }
 
+// Too many sign-in attempts for this IP + email. Thrown before the password is
+// checked, so it says nothing about whether the account exists.
+class RateLimitedError extends CredentialsSignin {
+  code = RATE_LIMITED_CODE;
+}
+
 const credentials = Credentials({
   credentials: {
     email: { label: "Email", type: "email" },
     password: { label: "Password", type: "password" },
   },
-  async authorize(credentials) {
+  // NextAuth owns /api/auth/callback/credentials, so the login rate limit has
+  // to be enforced here — it's the first code of ours the request reaches, and
+  // `request` carries the headers we need for the client IP.
+  async authorize(credentials, request) {
     const email = credentials?.email;
     const password = credentials?.password;
     if (typeof email !== "string" || typeof password !== "string") {
       return null;
     }
 
+    const normalizedEmail = email.toLowerCase();
+    const limitKey = rateLimitKey(getClientIp(request), normalizedEmail);
+
+    const limit = await checkRateLimit("login", limitKey);
+    if (!limit.success) {
+      throw new RateLimitedError();
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
     if (!user?.password) {
       return null;
@@ -50,6 +73,11 @@ const credentials = Credentials({
     if (isEmailVerificationEnabled() && !user.emailVerified) {
       throw new EmailNotVerifiedError();
     }
+
+    // Proving the password clears the slate, so someone who fat-fingers it a
+    // few times isn't locked out of their own account for the rest of the
+    // window. Only failed attempts accumulate.
+    await resetRateLimit("login", limitKey);
 
     return {
       id: user.id,

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { consumePasswordResetToken } from "@/lib/password-reset";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -57,6 +62,15 @@ export async function POST(request: Request) {
       { success: false, error: "Passwords do not match." },
       { status: 400 }
     );
+  }
+
+  // Keyed by IP — tokens are 32 random bytes, so this is about capping how fast
+  // one host can grind through guesses at all. Counted only once the submission
+  // is well-formed: a guess has to reach the token check to be worth anything,
+  // so a password typo shouldn't spend an attempt.
+  const limit = await checkRateLimit("resetPassword", getClientIp(request));
+  if (!limit.success) {
+    return rateLimitResponse(limit);
   }
 
   try {
