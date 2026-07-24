@@ -1,54 +1,16 @@
-# Current Feature: Rate Limiting for Auth
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Reusable rate-limiting utility at `src/lib/rate-limit.ts` backed by Upstash Redis
-  (`@upstash/ratelimit`), sliding-window algorithm, returning
-  `{ success, remaining, reset }`.
-- IP resolution from `x-forwarded-for` (Vercel) with a request fallback; compose
-  IP + email into the key where the spec calls for it.
-- Limits enforced on the five auth endpoints:
-  - login (`/api/auth/callback/credentials`) — 5 / 15 min, keyed by IP + email
-  - `/api/auth/register` — 3 / 1 hour, keyed by IP
-  - `/api/auth/forgot-password` — 3 / 1 hour, keyed by IP
-  - `/api/auth/reset-password` — 5 / 15 min, keyed by IP
-  - `/api/auth/resend-verification` — 3 / 15 min, keyed by IP + email
-- 429 responses carry `{ error: "Too many attempts. Please try again in X minutes." }`
-  plus a `Retry-After` header.
-- Frontend surfaces the limit message (toast / inline error) on each affected form.
-- Fail open: if Upstash is unreachable or unconfigured, the request is allowed.
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` documented in `.env.example`.
-- `npm run build` + `npm run lint` pass; behavior verified in the browser.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- Purpose: block brute force, credential stuffing, and abuse of the email-sending
-  endpoints (register / forgot-password / resend-verification all hit Resend).
-- Login is the awkward one — the credentials flow goes through NextAuth's
-  `/api/auth/callback/credentials` route, which we don't own. Likely enforcement
-  point is inside `authorize()` in `src/auth.ts` (Node runtime, has the email), or a
-  custom pre-check called from `LoginForm` before `signIn`. Decide during implementation.
-- Upstash free tier is 10k requests/day — enough for auth-only limiting.
-- Existing endpoints already return the `{ success, data|error }` shape and use manual
-  validation (no Zod in the project) — match that.
-- Non-enumeration behavior of forgot-password / resend-verification must be preserved;
-  rate-limit responses must not reveal whether an account exists.
-- Spec suggests rate-limiting middleware as a possible later cleanup — out of scope now.
-- Source spec: `context/features/rate-limiting-spec.md` (currently untracked).
-- **Deployment prerequisite — the host must set a trustworthy client IP header.**
-  `getClientIp` reads `x-forwarded-for` (first entry), then `x-real-ip`, then falls
-  back to the constant `"unknown"`. Two consequences:
-  - If neither header is present, every client shares the `"unknown"` bucket — that
-    would cap the whole app at 3 registrations/hour. Harmless locally (it's what the
-    curl tests exercised), but a self-inflicted outage in production.
-  - `x-forwarded-for` is client-supplied unless a trusted proxy overwrites it, so on a
-    host that only appends, an attacker mints a fresh bucket per request.
-  Vercel overwrites the header at the edge, so both are non-issues there. Any other
-  target needs the proxy configured to set it before this is load-bearing.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -283,3 +245,48 @@ In Progress
   open-redirect sanitizer rejects the absolute URL the proxy sets — pre-existing, identical to the
   existing `/dashboard` behavior, not in scope. Dashboard/collections/items reads remain demo-scoped;
   only the profile is per-user so far.
+- Rate Limiting for Auth — DONE on `feature/rate-limiting`, merged to main. Sliding-window rate
+  limiting on the five auth endpoints via Upstash Redis (`@upstash/ratelimit` + `@upstash/redis`),
+  to blunt brute force, credential stuffing, and abuse of the three routes that send Resend email.
+  New `src/lib/rate-limit.ts` is the single source of truth: a lazily built Redis client (`undefined`
+  = unresolved, `null` = no Upstash configured), one memoized `Ratelimit` per named limit, a
+  `RATE_LIMITS` registry holding all five configs, `getClientIp` (first `x-forwarded-for` entry →
+  `x-real-ip` → the constant `"unknown"`), `rateLimitKey` for composing IP + email, `checkRateLimit`
+  / `resetRateLimit`, and `rateLimitResponse` (429 + `Retry-After`). Limits: login 5/15min (IP+email),
+  register 3/1h (IP), forgot-password 3/1h (IP), reset-password 5/15min (IP), resend-verification
+  3/15min (IP+email). 429s return the project's `{ success, error }` shape, so all four existing forms
+  surface the message with **no frontend change**; only `LoginForm` needed editing. Login is the
+  exception — NextAuth owns `/api/auth/callback/credentials`, so the limit is enforced inside
+  `authorize()` (which receives `request`, hence the headers) and reported via a new
+  `RateLimitedError extends CredentialsSignin` whose `RATE_LIMITED_CODE` lives in
+  `src/lib/auth-errors.ts` alongside the verification code — the same round trip the email-verification
+  gate already used. **A successful login calls `resetRateLimit`**, so only failed attempts accumulate
+  and nobody is locked out of their own account (not in the spec; deliberate). Limits are counted only
+  after field validation passes: charging for validation errors would lock a user out for an hour over
+  a mistyped password, and a rejected payload costs neither a DB row nor an email — abuse still
+  requires well-formed payloads. Non-enumeration preserved: resend-verification consumes its token
+  identically for registered and unregistered addresses, before the `isEmailVerificationEnabled()`
+  short-circuit. Fails open throughout, and *fast*: the Redis client is capped at `retries: 1` (the
+  library default is 5 with exponential backoff, ~12s of sleeps) and each check races a 1s timeout,
+  measured at 4.4–4.7s → **0.13s** per request against an unreachable host. No schema/migration change.
+  `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` documented in `.env.example`; leaving them blank
+  disables limiting entirely. Build + lint pass; verified against a real Upstash instance: each endpoint
+  429s on the N+1th request with the right `Retry-After`; a different email gets a fresh bucket
+  (confirming the IP+email key); 5 malformed register payloads consume nothing while the next 3
+  well-formed ones pass and the 4th is blocked (same for reset-password at 6 mismatches / 5 guesses);
+  login blocked in the browser even with the correct password; 4-wrong-then-correct twice (10 attempts,
+  no block) proving reset-on-success; and fail-open verified with the vars blanked.
+  Notes for later: (1) **Deployment prerequisite — the host must set a trustworthy client IP header.**
+  With neither `x-forwarded-for` nor `x-real-ip` present, every client shares the `"unknown"` bucket,
+  capping the whole app at 3 registrations/hour; and `x-forwarded-for` is client-supplied unless a
+  trusted proxy overwrites it, so on a host that only appends, an attacker mints a fresh bucket per
+  request. Vercel overwrites at the edge so both are moot there — any other target needs the proxy
+  configured first. (2) `@upstash/ratelimit`'s `ephemeralCache` defaults to an in-process `Map` that
+  caches blocks in memory and short-circuits Redis until the reset elapses, so **clearing Redis does
+  not unblock anyone**, and each instance in a multi-instance deploy keeps its own cache — this
+  produced a genuinely confusing debugging session where the API returned 429 against an empty Redis.
+  (3) `remaining` is returned per the spec but nothing consumes it yet (could feed an
+  `X-RateLimit-Remaining` header). (4) Email goes into the Redis key uncapped since `EMAIL_REGEX`
+  permits arbitrarily long addresses — a 254-char cap would close it. (5) The login form says "in a few
+  minutes" rather than the spec's "in X minutes" because `CredentialsSignin.code` is a bare string with
+  no room for the reset timestamp. (6) Spec's suggested rate-limiting middleware remains out of scope.
