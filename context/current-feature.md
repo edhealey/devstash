@@ -1,16 +1,47 @@
-# Current Feature
+# Current Feature: Items List View
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Dynamic route `/items/[type]` renders a type-filtered items listing page (e.g.
+  `/items/snippets`, `/items/notes`)
+- Items are fetched from the database and filtered by the type in the URL
+- Items render in a responsive grid of `ItemCard` components — one column on small
+  screens, two columns on medium and up
+- Each card carries a left accent border in its item type's color
+- Implementation follows existing codebase patterns (server components, Prisma reads
+  in `src/lib/db/`, `getSystemTypeStyle` for type styling, no inline styles)
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- Spec: `context/features/item-list-view-spec.md`
+- The sidebar Types rows already link to `/items/[type]` using the plural `label`
+  slug from `src/lib/item-types.ts` (snippets, prompts, commands, notes, files,
+  images, links) — the route must accept those plural slugs and map them back to the
+  singular DB item-type names.
+- `ItemRow` (dashboard) already derives its left border from `getSystemTypeStyle`;
+  the new `ItemCard` should reuse that same registry rather than introducing a second
+  styling source.
+- Existing item reads live in `src/lib/db/items.ts` (`getPinnedItems`,
+  `getRecentItems`, `getSidebarItemTypes`) and share an `ItemCardData` select shape —
+  extend that file rather than creating a new one.
+- Decisions made during implementation (all following
+  `docs/item-crud-architecture.md`):
+  - Reads are scoped to the real session user via `auth()` — the dashboard already
+    works this way, so the earlier "demo-scoped" note was stale.
+  - Unknown type slug → `notFound()` (404), never a fall-through to an unfiltered
+    list.
+  - Valid type with no items → an `ItemsEmptyState` card with registry-derived copy.
+  - The Sidebar/Topbar shell moved into a `(dashboard)` route group so `/items/*`
+    shares it; no URL changed.
+  - `ItemCard` is a new grid tile (the spec asks for a card grid); the dashboard's
+    `ItemRow` stays as the stacked-list variant, untouched.
+- Not in scope, still outstanding: the item detail route `/items/[type]/[id]` that
+  `ItemCard` links to does not exist yet, and the dashboard's `ItemRow` still links
+  to the old `/items/[id]` shape. Both 404 today, as they did before this feature.
 
 ## History
 

@@ -10,19 +10,21 @@ import { getSidebarItemTypes } from "@/lib/db/items";
 // The sidebar reads live data, so opt out of static prerendering.
 export const dynamic = "force-dynamic";
 
+// Shared shell for every signed-in section (/dashboard, /items, ...). The
+// (dashboard) route group is not a URL segment, so paths are unaffected.
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // The proxy already redirects unauthenticated requests, but the sidebar
-  // queries are scoped by this id — so resolve it here rather than assuming,
-  // and bail out if it's somehow missing instead of falling back to any
-  // default scope.
+  // The proxy already redirects unauthenticated requests (with a callbackUrl
+  // for the actual destination), but the sidebar queries are scoped by this id
+  // — so resolve it here rather than assuming, and bail out if it's somehow
+  // missing instead of falling back to any default scope.
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) {
-    redirect("/login?callbackUrl=/dashboard");
+    redirect("/login");
   }
 
   const [types, { favorites, recent }] = await Promise.all([
