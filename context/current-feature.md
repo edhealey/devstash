@@ -290,3 +290,9 @@ Not Started
   permits arbitrarily long addresses — a 254-char cap would close it. (5) The login form says "in a few
   minutes" rather than the spec's "in X minutes" because `CredentialsSignin.code` is a bare string with
   no room for the reset timestamp. (6) Spec's suggested rate-limiting middleware remains out of scope.
+- Item Row Type Accent Border — DONE on `chore/item-row-border-and-docs`. Dashboard item rows
+  (Pinned / Recent) now carry a left accent border in their item type's color, matching
+  `CollectionCard`. `ItemRow` pulls `borderColor` from the existing `getSystemTypeStyle` registry
+  and applies `border-l-4` + that class via `cn` — no new styling source, no inline styles. Unlike
+  collection cards (which use the collection's *dominant* type), each row keys off its own item
+  type. Build + lint pass; not exercised in the browser (dev server wasn't running for this pass).

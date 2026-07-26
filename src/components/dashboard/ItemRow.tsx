@@ -15,12 +15,17 @@ function formatDate(value: Date) {
 }
 
 export function ItemRow({ item }: { item: ItemCardData }) {
-  const { icon: Icon, iconColor } = getSystemTypeStyle(item.typeName);
+  const { icon: Icon, iconColor, borderColor } = getSystemTypeStyle(
+    item.typeName
+  );
 
   return (
     <Link
       href={`/items/${item.id}`}
-      className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/50"
+      className={cn(
+        "flex items-start gap-4 rounded-xl border border-l-4 border-border bg-card p-4 transition-colors hover:bg-accent/50",
+        borderColor
+      )}
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent">
         <Icon className={cn("size-5", iconColor)} />
