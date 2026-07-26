@@ -69,7 +69,7 @@ function TypeRow({ type }: { type: ItemTypeSummary }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const style = getSystemTypeStyle(type.name);
-  const href = `/items/${style.label.toLowerCase()}`;
+  const href = `/items/${style.slug}`;
   const Icon = style.icon;
   const active = pathname === href;
 

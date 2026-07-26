@@ -78,6 +78,23 @@ export async function getRecentItems(
   return items.map(toCardData);
 }
 
+// All of the user's items of one system type (e.g. "snippet"), newest-first,
+// for the /items/[type] list page. The type is matched by name against the
+// system rows (userId: null) so a user's custom type of the same name can't
+// leak into a system-type listing.
+export async function getItemsByType(
+  userId: string,
+  typeName: string
+): Promise<ItemCardData[]> {
+  const items = await prisma.item.findMany({
+    where: { userId, itemType: { name: typeName, isSystem: true } },
+    orderBy: { updatedAt: "desc" },
+    select: itemSelect,
+  });
+
+  return items.map(toCardData);
+}
+
 export interface ItemTypeSummary {
   // System item-type name (e.g. "snippet"), used for icon/label styling.
   name: string;

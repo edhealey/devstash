@@ -7,7 +7,7 @@ const { auth } = NextAuth(authConfig);
 
 // Protect authenticated areas: send unauthenticated users to the custom
 // sign-in page, preserving where they were headed via callbackUrl.
-const PROTECTED_PREFIXES = ["/dashboard", "/profile"];
+const PROTECTED_PREFIXES = ["/dashboard", "/items", "/profile"];
 
 export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -28,5 +28,5 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*"],
+  matcher: ["/dashboard/:path*", "/items/:path*", "/profile/:path*"],
 };
