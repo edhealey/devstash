@@ -1,47 +1,16 @@
-# Current Feature: Items List View
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Dynamic route `/items/[type]` renders a type-filtered items listing page (e.g.
-  `/items/snippets`, `/items/notes`)
-- Items are fetched from the database and filtered by the type in the URL
-- Items render in a responsive grid of `ItemCard` components — one column on small
-  screens, two columns on medium and up
-- Each card carries a left accent border in its item type's color
-- Implementation follows existing codebase patterns (server components, Prisma reads
-  in `src/lib/db/`, `getSystemTypeStyle` for type styling, no inline styles)
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- Spec: `context/features/item-list-view-spec.md`
-- The sidebar Types rows already link to `/items/[type]` using the plural `label`
-  slug from `src/lib/item-types.ts` (snippets, prompts, commands, notes, files,
-  images, links) — the route must accept those plural slugs and map them back to the
-  singular DB item-type names.
-- `ItemRow` (dashboard) already derives its left border from `getSystemTypeStyle`;
-  the new `ItemCard` should reuse that same registry rather than introducing a second
-  styling source.
-- Existing item reads live in `src/lib/db/items.ts` (`getPinnedItems`,
-  `getRecentItems`, `getSidebarItemTypes`) and share an `ItemCardData` select shape —
-  extend that file rather than creating a new one.
-- Decisions made during implementation (all following
-  `docs/item-crud-architecture.md`):
-  - Reads are scoped to the real session user via `auth()` — the dashboard already
-    works this way, so the earlier "demo-scoped" note was stale.
-  - Unknown type slug → `notFound()` (404), never a fall-through to an unfiltered
-    list.
-  - Valid type with no items → an `ItemsEmptyState` card with registry-derived copy.
-  - The Sidebar/Topbar shell moved into a `(dashboard)` route group so `/items/*`
-    shares it; no URL changed.
-  - `ItemCard` is a new grid tile (the spec asks for a card grid); the dashboard's
-    `ItemRow` stays as the stacked-list variant, untouched.
-- Not in scope, still outstanding: the item detail route `/items/[type]/[id]` that
-  `ItemCard` links to does not exist yet, and the dashboard's `ItemRow` still links
-  to the old `/items/[id]` shape. Both 404 today, as they did before this feature.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -327,3 +296,43 @@ In Progress
   and applies `border-l-4` + that class via `cn` — no new styling source, no inline styles. Unlike
   collection cards (which use the collection's *dominant* type), each row keys off its own item
   type. Build + lint pass; not exercised in the browser (dev server wasn't running for this pass).
+- Items List View — DONE on `feature/items-list-view`, merged to main. Dynamic route
+  `/items/[type]` listing the signed-in user's items of one system type in a responsive card grid
+  (1 column, 2 at `md`+), each card carrying a left accent border in its own type's color. Spec:
+  `context/features/item-list-view-spec.md`; every open decision was already settled by
+  `docs/item-crud-architecture.md` (written 2026-07-24) and this implements its step 1 + the list
+  half of step 2. **Route group:** the Sidebar/Topbar shell moved from `src/app/dashboard/layout.tsx`
+  to `src/app/(dashboard)/layout.tsx` (with `dashboard/page.tsx` alongside) so `/items/*` shares the
+  chrome — `(dashboard)` is not a path segment, so no URL changed; the layout's defensive
+  no-session redirect dropped its now-wrong hardcoded `callbackUrl=/dashboard` (the proxy already
+  sets the real destination). **Registry:** `SystemTypeStyle` gained an explicit `slug` plus
+  `typeSlug(name)` / `typeNameFromSlug(slug)` in `src/lib/item-types.ts`; `Sidebar` `TypeRow` now
+  reads `style.slug` instead of deriving it ad hoc with `label.toLowerCase()`. **Query:**
+  `getItemsByType(userId, typeName)` in `src/lib/db/items.ts`, reusing the shared `itemSelect` /
+  `ItemCardData` shape, ordered `updatedAt desc`, and filtered on `itemType: { name, isSystem: true }`
+  so a future user-defined type of the same name can't leak into a system-type listing. **Page**
+  (`src/app/(dashboard)/items/[type]/page.tsx`, `force-dynamic`): awaits `params` (Next 16 Promise),
+  resolves the slug → `notFound()` on an unknown one (never a fall-through to an unfiltered list),
+  then `auth()` → `redirect("/login?callbackUrl=/items/<slug>")`, then fetches. Header shows the
+  type icon + plural label + `PRO` badge for file/image + item count. **Components:**
+  `src/components/items/ItemCard.tsx` (new grid tile — icon tile, title, pin/star, 2-line
+  description, tags, UTC-safe date; `border-l-4` + `borderColor` from `getSystemTypeStyle`) and
+  `ItemsEmptyState.tsx` (registry-derived copy, no per-type strings). The dashboard's `ItemRow` is
+  deliberately untouched — it stays the stacked-list variant, `ItemCard` is the grid variant.
+  **Proxy:** `/items` added to `PROTECTED_PREFIXES` and `config.matcher`. No schema/migration, no
+  new dependency. Build + lint pass; verified in browser against the seeded demo user: snippets
+  (4, blue borders, 2 columns at 1440px), links (6, green), prompts/commands, notes + files (empty
+  state; `PRO` badge in the Files header), `/items/bogus` → real 404, logged-out `/items/snippets`
+  → `/login?callbackUrl=%2Fitems%2Fsnippets`, 390px mobile single column, and `/dashboard`
+  unchanged after the route-group move. One bug caught in that browser pass: with no explicit
+  `grid-cols-1`, the implicit auto grid track sized to the card's content (397px inside a 342px
+  container) and cards overflowed the viewport on mobile — `grid-cols-1` (`minmax(0,1fr)`) caps the
+  track, and the class carries a comment saying so. Notes for later: (1) `ItemCard` links to
+  `/items/[type]/[id]` per the design doc's route table, and that detail route doesn't exist yet, so
+  card clicks 404; (2) the dashboard's `ItemRow` still links to the old flat `/items/[id]`, which
+  now resolves to the `[type]` route and 404s there instead — same user-visible outcome as before,
+  but both hrefs should be reconciled when the detail page lands; (3) `/items` (all types) and
+  `/collections` are still unrouted, so the dashboard's two "View all" links and the sidebar's
+  "View all collections" remain dead; (4) list ordering is `updatedAt` while the DB index is on
+  `createdAt` — the composite `@@index([userId, updatedAt])` noted in `docs/item-types.md` is still
+  the migration to make when volume justifies it.
