@@ -1,4 +1,4 @@
-# Current Feature: Items Grid — Three Columns on Large Screens
+# Current Feature
 
 ## Status
 
@@ -6,48 +6,11 @@ Not Started
 
 ## Goals
 
-- The `/items/[type]` listing shows **three cards per row on large screens** instead of
-  the current maximum of two.
-- The grid stays **responsive** across the whole range: one column on mobile, two at the
-  middle breakpoint, three on large screens. No horizontal overflow at any width.
-- Single-line change in scope: the grid classes on the card container in
-  `src/app/(dashboard)/items/[type]/page.tsx:62`
-  (`grid grid-cols-1 gap-4 md:grid-cols-2` → add a three-column step).
-- Cards themselves are untouched — `ItemCard` already sizes to its grid track.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- **Current state:** `src/app/(dashboard)/items/[type]/page.tsx:62` is
-  `grid grid-cols-1 gap-4 md:grid-cols-2`. The container is `mx-auto max-w-6xl p-6`.
-- **Breakpoint choice — `lg` vs `xl`.** Recommend `lg:grid-cols-3`, matching the existing
-  precedent in `src/app/(dashboard)/dashboard/page.tsx:72` (the collections grid is
-  `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Coding standards say to preserve existing
-  patterns, and this makes the two card grids agree.
-  - The one thing to check in the browser: the dashboard shell has an inline sidebar rail
-    (~256px), so at exactly 1024px the main column is ~768px and three cards land near
-    ~230px each. If that reads as cramped, move the step to `xl:grid-cols-3`. Decide by
-    looking, not by arithmetic.
-- **Keep `grid-cols-1` explicit.** It is load-bearing, not redundant — the Items List View
-  pass found that an implicit auto track sizes to the card's content and overflows narrow
-  viewports; `minmax(0, 1fr)` caps it. The comment above the line says so; leave both in
-  place.
-- `max-w-6xl` (1152px) needs no change: three columns with `gap-4` inside it give
-  ~357px cards, about the same as a two-column card at `md`. Widening the container is out
-  of scope.
-- Verify in the browser at four widths — 390px (1 col), 768px (2 cols), 1024px and 1440px
-  (3 cols) — on a type with enough items to fill a row. The seed gives Links 6 items and
-  Commands 5, so those are the useful ones; Snippets has 4.
-- No data, query, schema, or dependency change. No new unit tests: this is a Tailwind class
-  change in a server component, and the project does not unit test components.
-
-## Blocker for `start` — uncommitted work on another branch
-
-The **Vitest Unit Testing Setup** feature is finished (92 tests, lint/typecheck/build all
-pass) but still sits **uncommitted on branch `chore/vitest-setup`** — 13 changed files. Its
-History entry is appended below so this load didn't discard it.
-
-Commit and merge that branch before `/feature start` creates a branch for this feature,
-otherwise the Vitest changes get carried onto it and tangle the two commits.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -373,7 +336,8 @@ otherwise the Vitest changes get carried onto it and tangle the two commits.
   "View all collections" remain dead; (4) list ordering is `updatedAt` while the DB index is on
   `createdAt` — the composite `@@index([userId, updatedAt])` noted in `docs/item-types.md` is still
   the migration to make when volume justifies it.
-- Vitest Unit Testing Setup — DONE on `chore/vitest-setup`, **not yet committed or merged**.
+- Vitest Unit Testing Setup — DONE on `chore/vitest-setup`, committed (`1e97350`) and merged to
+  main (`31baea3`); branch deleted.
   Installed `vitest` 4.1.10 as the only new dev dependency (46 transitive packages); no jsdom, no
   React Testing Library, no `@vitejs/plugin-react` — scope is **server actions and utilities only,
   no component tests**, so nothing renders and nothing needs a DOM. `vitest.config.ts`: `node`
@@ -418,4 +382,39 @@ otherwise the Vitest changes get carried onto it and tangle the two commits.
   from the structure listing in `project-overview.md` since the same doc set marks creating that file
   as a CRITICAL don't under Tailwind v4. Not covered, deliberately: the `src/lib/db/*` read helpers,
   the API route handlers, and `src/lib/email.ts` (a thin Resend wrapper — a test there would only
-  assert the mock). Remaining: commit, merge to main, delete the branch.
+  assert the mock).
+- Items Grid — Three Columns on Large Screens — DONE on `feature/items-grid-three-columns`,
+  merged to main. The `/items/[type]` card grid went `1 → 2` columns and stopped; it now adds a
+  third column so wide screens use the horizontal space. Entire code change is one class list in
+  `src/app/(dashboard)/items/[type]/page.tsx`: `grid grid-cols-1 gap-4 md:grid-cols-2` →
+  `grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3`. No data, query, schema, component, or
+  dependency change; `ItemCard` already sizes to its grid track, and `grid-cols-1` stayed explicit
+  (it is load-bearing — see the Items List View entry for the mobile-overflow bug it fixes).
+  **The breakpoint is `xl`, not `lg`, and that was decided by looking.** The spec recommended `lg`
+  to match the dashboard's collections grid (`sm:grid-cols-2 lg:grid-cols-3`) on the
+  preserve-existing-patterns principle. Implemented that first and it was clearly worse in the
+  browser: the dashboard shell keeps an inline sidebar rail of ~256px, so at 1024px each card lands
+  near 215px and *every* card title truncated ("Lucide Ic…", "Material …", "GitHub Ac…") with
+  descriptions clipped to two words — a readability regression versus the two-column layout it
+  replaced. Moved to `xl:grid-cols-3`, where titles read in full at 1280px. The divergence from the
+  dashboard precedent is justified in a code comment: collection cards carry a name and a count,
+  item cards carry a title, description and date, so they need more track. Verified in the browser
+  against the seeded demo user at five widths — 390px (1 col, no horizontal overflow, sidebar as
+  drawer), 768px (2), 1024px (2), 1280px (3, titles readable), 1440px (3) — plus Commands (5 items)
+  laying out 3 + 2 with the partial row keeping its track width rather than stretching. Gate:
+  `npm test` 92/92, lint clean, `npm run typecheck` clean, `npm run build` passes. **No unit tests
+  added, deliberately** — the diff is a Tailwind class in a server component with no action, utility,
+  branch, or data access; asserting on the class string would restate the implementation and break on
+  a harmless reorder without ever catching a layout regression (`context/coding-standards.md`: "if it
+  can't fail, it isn't earning its place"). The route's own logic is already covered — `typeNameFromSlug`
+  and `getSystemTypeStyle` have 12 assertions in `src/lib/item-types.test.ts`. Notes for later:
+  (1) **the real constraint is the sidebar, not the grid** — `context/project-overview.md`'s responsive
+  table says the sidebar should be a drawer below 1024px with full-width main content, but the rail
+  stays inline at 768–1023px; that ~256px is what makes both 768px and 1024px tight, and if the shell
+  is ever brought in line with the spec, `lg:grid-cols-3` becomes viable and this breakpoint should be
+  revisited; (2) `getItemsByType` in `src/lib/db/items.ts` is still untested, and its
+  `itemType: { name, isSystem: true }` filter is the guard against a future user-defined type leaking
+  into a system-type listing — worth a mocked-Prisma test as its own chore, still inside the
+  `src/lib/db/*` exclusion the Vitest pass recorded; (3) the dev console logs a pre-existing `pg`
+  SSL-mode deprecation warning (`sslmode=require` in `DATABASE_URL` changes meaning in pg v9 /
+  pg-connection-string v3).
