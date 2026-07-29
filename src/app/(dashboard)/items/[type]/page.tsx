@@ -59,7 +59,12 @@ export default async function ItemsByTypePage({
         // grid-cols-1 is explicit on purpose: an implicit auto track sizes to
         // the card's content and overflows narrow viewports, while
         // minmax(0, 1fr) caps it to the container.
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        //
+        // Three columns start at xl, not lg. The sidebar rail takes ~256px, so
+        // at lg the cards land near 215px and every title truncates — wider
+        // than the dashboard's collection grid needs (those cards hold only a
+        // name and a count, these hold a title, description and date).
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
