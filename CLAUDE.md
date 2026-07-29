@@ -14,13 +14,26 @@ Read the following to get the full context of the project:
 ## Commands
 
 ```bash
-npm run dev     # start dev server at http://localhost:3000
-npm run build   # production build
-npm run start   # serve the production build
-npm run lint    # ESLint (flat config)
+npm run dev        # start dev server at http://localhost:3000
+npm run build      # production build
+npm run start      # serve the production build
+npm run lint       # ESLint (flat config)
+npm run typecheck  # tsc --noEmit (covers tests; `build` only checks the app graph)
+npm test           # Vitest, single run
+npm run test:watch # Vitest, watch mode
 ```
 
-There is no test setup in this project yet.
+## Testing
+
+Vitest, `node` environment. **Server actions and utilities only — no component tests.**
+
+- Tests sit next to the code they cover: `src/lib/foo.ts` → `src/lib/foo.test.ts`.
+- `vitest.config.ts` matches `src/**/*.test.ts` (`.ts` only — a component test would
+  need `.tsx` plus a DOM environment, neither of which is configured).
+- **No test may touch the database or the network.** Mock `@/lib/prisma` (and `@/auth`,
+  `@/lib/email`, `bcryptjs` as needed) with `vi.mock`; declare the mock objects inside
+  `vi.hoisted` since `vi.mock` factories are hoisted above the imports.
+- See `context/coding-standards.md` for the full conventions.
 
 ## Neon MCP
 

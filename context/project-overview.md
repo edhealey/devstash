@@ -488,6 +488,7 @@ flowchart TB
 | **AI**             | OpenAI GPT-4o Mini          | Cost-effective for AI features         |
 | **Styling**        | Tailwind CSS v4 + shadcn/ui | Modern, accessible components          |
 | **Payments**       | Stripe                      | Subscriptions & billing                |
+| **Unit Testing**   | Vitest                      | Actions + utilities only, no component tests |
 
 ### Important Development Notes
 
@@ -729,10 +730,17 @@ devstash/
 ├── public/
 ├── .env.example
 ├── next.config.ts
-├── tailwind.config.ts
+├── vitest.config.ts
 ├── tsconfig.json
 └── package.json
 ```
+
+> **Tests** are co-located with the code they cover (`src/lib/foo.ts` →
+> `src/lib/foo.test.ts`), not gathered in a top-level test directory. Server actions and
+> utilities only — see [Testing](coding-standards.md#testing).
+>
+> There is no `tailwind.config.ts`: Tailwind v4 is configured in CSS via `@theme` in
+> `src/app/globals.css`.
 
 ---
 

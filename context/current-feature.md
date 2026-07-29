@@ -1,4 +1,4 @@
-# Current Feature
+# Current Feature: Items Grid — Three Columns on Large Screens
 
 ## Status
 
@@ -6,11 +6,48 @@ Not Started
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- The `/items/[type]` listing shows **three cards per row on large screens** instead of
+  the current maximum of two.
+- The grid stays **responsive** across the whole range: one column on mobile, two at the
+  middle breakpoint, three on large screens. No horizontal overflow at any width.
+- Single-line change in scope: the grid classes on the card container in
+  `src/app/(dashboard)/items/[type]/page.tsx:62`
+  (`grid grid-cols-1 gap-4 md:grid-cols-2` → add a three-column step).
+- Cards themselves are untouched — `ItemCard` already sizes to its grid track.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- **Current state:** `src/app/(dashboard)/items/[type]/page.tsx:62` is
+  `grid grid-cols-1 gap-4 md:grid-cols-2`. The container is `mx-auto max-w-6xl p-6`.
+- **Breakpoint choice — `lg` vs `xl`.** Recommend `lg:grid-cols-3`, matching the existing
+  precedent in `src/app/(dashboard)/dashboard/page.tsx:72` (the collections grid is
+  `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Coding standards say to preserve existing
+  patterns, and this makes the two card grids agree.
+  - The one thing to check in the browser: the dashboard shell has an inline sidebar rail
+    (~256px), so at exactly 1024px the main column is ~768px and three cards land near
+    ~230px each. If that reads as cramped, move the step to `xl:grid-cols-3`. Decide by
+    looking, not by arithmetic.
+- **Keep `grid-cols-1` explicit.** It is load-bearing, not redundant — the Items List View
+  pass found that an implicit auto track sizes to the card's content and overflows narrow
+  viewports; `minmax(0, 1fr)` caps it. The comment above the line says so; leave both in
+  place.
+- `max-w-6xl` (1152px) needs no change: three columns with `gap-4` inside it give
+  ~357px cards, about the same as a two-column card at `md`. Widening the container is out
+  of scope.
+- Verify in the browser at four widths — 390px (1 col), 768px (2 cols), 1024px and 1440px
+  (3 cols) — on a type with enough items to fill a row. The seed gives Links 6 items and
+  Commands 5, so those are the useful ones; Snippets has 4.
+- No data, query, schema, or dependency change. No new unit tests: this is a Tailwind class
+  change in a server component, and the project does not unit test components.
+
+## Blocker for `start` — uncommitted work on another branch
+
+The **Vitest Unit Testing Setup** feature is finished (92 tests, lint/typecheck/build all
+pass) but still sits **uncommitted on branch `chore/vitest-setup`** — 13 changed files. Its
+History entry is appended below so this load didn't discard it.
+
+Commit and merge that branch before `/feature start` creates a branch for this feature,
+otherwise the Vitest changes get carried onto it and tangle the two commits.
 
 ## History
 
@@ -336,3 +373,49 @@ Not Started
   "View all collections" remain dead; (4) list ordering is `updatedAt` while the DB index is on
   `createdAt` — the composite `@@index([userId, updatedAt])` noted in `docs/item-types.md` is still
   the migration to make when volume justifies it.
+- Vitest Unit Testing Setup — DONE on `chore/vitest-setup`, **not yet committed or merged**.
+  Installed `vitest` 4.1.10 as the only new dev dependency (46 transitive packages); no jsdom, no
+  React Testing Library, no `@vitejs/plugin-react` — scope is **server actions and utilities only,
+  no component tests**, so nothing renders and nothing needs a DOM. `vitest.config.ts`: `node`
+  environment, `@/` → `./src` alias mirroring `tsconfig.json`, `include: ["src/**/*.test.ts"]`. The
+  `.ts`-only pattern is how the no-components rule is *enforced* rather than merely documented — a
+  component test would need `.tsx` plus jsdom plus the React plugin, so it can't be added by
+  accident. Also sets `clearMocks` / `restoreMocks` / `unstubEnvs` / `unstubGlobals` so no test
+  leaks state into the next. Scripts: `npm test` (`vitest run`), `npm run test:watch`, and
+  `npm run typecheck` (`tsc --noEmit`). **92 tests across 6 files**, all against mocks — nothing
+  touches Neon or the network, and the whole suite runs in ~250ms:
+  `src/lib/item-types.test.ts` (registry integrity, canonical ordering, unknown-type fallback, slug
+  round-trip, unknown slug → `null`), `src/lib/email-verification.test.ts` (default-on, only the
+  literal `false` disables, re-read per call), `src/lib/rate-limit.test.ts` (`getClientIp` header
+  precedence, key composition, `Retry-After` floored at 1, message pluralization, 429 body shape,
+  fail-open when Upstash is unconfigured — via `vi.resetModules()` + dynamic import, since the Redis
+  client is memoized at module scope), `src/actions/profile.test.ts` (`changePasswordAction`
+  validation branches, 12-round hash, compare-before-hash ordering, session-derived user id, generic
+  error on DB failure; `deleteAccountAction`), `src/lib/verification.test.ts` (only the SHA-256 hash
+  is stored, 64-hex entropy, prior tokens invalidated before issuing, 24h TTL, single-use,
+  expired/already-verified/missing-user paths), and `src/lib/password-reset.test.ts` (namespaced
+  identifier, 1h TTL, **a verification token is refused and its row left intact**, `emailVerified`
+  stamped only when null). Mocking convention: mock objects are declared inside `vi.hoisted` because
+  `vi.mock` factories are hoisted above the imports — a plain `const` is still uninitialized when
+  the factory runs (hit this as a real "Cannot access 'bcrypt' before initialization" failure).
+  `@/auth` must be mocked or importing an action pulls in Prisma and the adapter at module load.
+  Docs updated: `context/ai-interaction.md` workflow split old step 4 into **Unit test** (write
+  tests + `npm test`) and **Verify** (browser + build/lint/typecheck), dropped "Implement unit
+  testing later", commit gate now requires tests *and* build, plus a new Testing section on what is
+  and isn't worth testing; `context/coding-standards.md` gained a full Testing section (scope, the
+  `vi.hoisted` pattern, `vi.stubEnv`, fake timers, naming) and a tests line under File Organization;
+  `CLAUDE.md` replaced "There is no test setup in this project yet" with the command list and a
+  Testing summary; `context/project-overview.md` gained a Vitest row in the tech stack and
+  `vitest.config.ts` in the structure listing. Two verifications worth recording: (1) the suite was
+  **mutation-checked**, not just run green — deleting the `startsWith(IDENTIFIER_PREFIX)` guard in
+  `password-reset.ts` fails exactly one test, and the source was restored afterward; (2) `npm run
+  build` does **not** type-check test files — a deliberate `const leak: number = "not a number"`
+  appended to a test still built clean, because Next only checks files reachable from the app's
+  module graph. That is why `npm run typecheck` was added (it catches it, and the project is
+  otherwise clean) and why the earlier draft claim that the build covered tests was wrong. Two
+  incidental doc fixes: an unclosed ` ```css ` fence in `coding-standards.md` was rendering
+  everything from "File Organization" down inside a code block, and `tailwind.config.ts` was removed
+  from the structure listing in `project-overview.md` since the same doc set marks creating that file
+  as a CRITICAL don't under Tailwind v4. Not covered, deliberately: the `src/lib/db/*` read helpers,
+  the API route handlers, and `src/lib/email.ts` (a thin Resend wrapper — a test there would only
+  assert the mock). Remaining: commit, merge to main, delete the branch.

@@ -46,6 +46,7 @@ Example v4 configuration:
 @theme {
   --color-primary: oklch(50% 0.2 250);
 }
+```
 
 ## File Organization
 
@@ -54,6 +55,7 @@ Example v4 configuration:
 - Server Actions: `src/actions/[feature].ts`
 - Types: `src/types/[feature].ts`
 - Lib/Utils: `src/lib/[utility].ts`
+- Tests: next to the code under test — `src/lib/[utility].test.ts`, `src/actions/[feature].test.ts`
 
 ## Naming
 
@@ -89,9 +91,50 @@ Example v4 configuration:
 - Return `{ success, data, error }` pattern from actions
 - Display user-friendly error messages via toast
 
+## Testing
+
+Vitest (`node` environment), configured in `vitest.config.ts`. Run with `npm test` or
+`npm run test:watch`.
+
+### Scope
+
+- **Server actions and utilities only.** No component tests — nothing renders in these
+  tests, so there is no jsdom environment and no React plugin installed.
+- `vitest.config.ts` matches `src/**/*.test.ts`. Adding a component test would mean
+  adding a `.tsx` pattern, jsdom, and `@vitejs/plugin-react` — a deliberate decision, not
+  something to slip in.
+- Worth testing: validation and branching, auth/security decisions, pure transforms,
+  token and env-flag logic, and the `{ success, data, error }` shape actions return.
+- Not worth testing: functions that only forward to Prisma, Resend, or Upstash; the
+  generated Prisma client; anything whose test would just restate the implementation.
+
+### Rules
+
+- **Never touch the database or the network.** Mock `@/lib/prisma` with `vi.mock`, along
+  with `@/auth`, `@/lib/email`, and `bcryptjs` where the module under test imports them.
+  `@/auth` must be mocked or the import pulls in Prisma and the adapter at load time.
+- Declare mock objects inside `vi.hoisted` — `vi.mock` factories are hoisted above the
+  imports, so a plain `const` is still uninitialized when the factory runs.
+- Config sets `clearMocks`, `restoreMocks`, `unstubEnvs`, and `unstubGlobals`, so call
+  history, spies, and env stubs are reset between tests. Set up the happy path in
+  `beforeEach` and let each test override only what it exercises.
+- Read env with `vi.stubEnv`. Vitest does not copy `.env` into `process.env`, so tests
+  never see real credentials. For a module that memoizes an env read at module scope, use
+  `vi.resetModules()` plus a dynamic `import()`.
+- Pin the clock with `vi.useFakeTimers()` / `vi.setSystemTime()` for anything asserting on
+  a TTL or a duration, and call `vi.useRealTimers()` afterwards.
+- Derive an expected hash in the test rather than copying a literal, and assert the raw
+  secret is *not* what got stored.
+- Name tests for the behavior, not the function: "rejects an unauthenticated caller
+  before touching the database", not "returns false".
+
+### Type checking
+
+`npm run build` only type-checks files reachable from the app's module graph, so it does
+**not** cover test files. `npm run typecheck` (`tsc --noEmit`) covers the whole project.
+
 ## Code Quality
 
 - No commented-out code unless specified
 - No unused imports or variables
 - Keep functions under 50 lines when possible
-```
