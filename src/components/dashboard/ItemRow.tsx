@@ -1,6 +1,8 @@
-import Link from "next/link";
+"use client";
+
 import { Pin, Star } from "lucide-react";
 
+import { useItemDrawer } from "@/components/items/ItemDrawerProvider";
 import { type ItemCardData } from "@/lib/db/items";
 import { getSystemTypeStyle } from "@/lib/item-types";
 import { cn } from "@/lib/utils";
@@ -14,16 +16,21 @@ function formatDate(value: Date) {
   });
 }
 
+// Stacked-list variant of an item card, for the dashboard's Pinned and Recent
+// sections. Clicking opens the item drawer rather than navigating — the drawer
+// is the detail view, so there is no item page to link to.
 export function ItemRow({ item }: { item: ItemCardData }) {
+  const { openItem } = useItemDrawer();
   const { icon: Icon, iconColor, borderColor } = getSystemTypeStyle(
     item.typeName
   );
 
   return (
-    <Link
-      href={`/items/${item.id}`}
+    <button
+      type="button"
+      onClick={() => openItem(item)}
       className={cn(
-        "flex items-start gap-4 rounded-xl border border-l-4 border-border bg-card p-4 transition-colors hover:bg-accent/50",
+        "flex w-full items-start gap-4 rounded-xl border border-l-4 border-border bg-card p-4 text-left transition-colors hover:bg-accent/50",
         borderColor
       )}
     >
@@ -63,6 +70,6 @@ export function ItemRow({ item }: { item: ItemCardData }) {
       <span className="shrink-0 text-xs text-muted-foreground">
         {formatDate(item.updatedAt)}
       </span>
-    </Link>
+    </button>
   );
 }

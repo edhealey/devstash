@@ -73,6 +73,9 @@ type SeedItem = {
   url?: string;
   language?: string;
   isPinned?: boolean;
+  isFavorite?: boolean;
+  // Tag names; connected by name so items can share tags.
+  tags?: string[];
 };
 
 type SeedCollection = {
@@ -93,6 +96,8 @@ const collections: SeedCollection[] = [
         type: "snippet",
         language: "typescript",
         isPinned: true,
+        isFavorite: true,
+        tags: ["react", "hooks", "typescript"],
         description: "Debounce a rapidly-changing value, e.g. a search input.",
         content: `import { useEffect, useState } from "react";
 
@@ -111,6 +116,7 @@ export function useDebounce<T>(value: T, delay = 300): T {
         title: "Theme context provider",
         type: "snippet",
         language: "typescript",
+        tags: ["react", "context"],
         description: "A compound Context provider + hook pattern for theming.",
         content: `import { createContext, useContext, useState, type ReactNode } from "react";
 
@@ -159,6 +165,7 @@ export function cn(...inputs: ClassValue[]) {
         title: "Code review prompt",
         type: "prompt",
         isPinned: true,
+        tags: ["review", "llm"],
         description: "Ask an LLM for a focused, actionable code review.",
         content: `You are a senior engineer doing a code review. Review the diff below for:
 1. Correctness and edge cases
@@ -260,6 +267,7 @@ CMD ["node", "dist/index.js"]`,
         type: "command",
         language: "bash",
         isPinned: true,
+        tags: ["git"],
         description: "Soft-reset the last commit, leaving files staged.",
         content: "git reset --soft HEAD~1",
       },
@@ -293,6 +301,8 @@ CMD ["node", "dist/index.js"]`,
       {
         title: "Tailwind CSS Docs",
         type: "link",
+        isFavorite: true,
+        tags: ["css", "docs"],
         description: "Utility-first CSS framework reference.",
         url: "https://tailwindcss.com/docs",
       },
@@ -364,9 +374,16 @@ async function seedCollectionsAndItems(
           description: item.description ?? null,
           language: item.language ?? null,
           isPinned: item.isPinned ?? false,
+          isFavorite: item.isFavorite ?? false,
           userId,
           itemTypeId,
           collections: { create: { collectionId: collection.id } },
+          tags: {
+            connectOrCreate: (item.tags ?? []).map((name) => ({
+              where: { name },
+              create: { name },
+            })),
+          },
         },
       });
     }
