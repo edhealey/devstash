@@ -3,6 +3,7 @@
 // default or a fallback, so a missed call site fails the build rather than
 // silently serving another account's rows.
 
+import { type ContentType } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_TYPE_ORDER } from "@/lib/item-types";
 
@@ -93,6 +94,74 @@ export async function getItemsByType(
   });
 
   return items.map(toCardData);
+}
+
+// Everything the item drawer renders: the card fields plus the ones only the
+// detail view needs (content, language, collection membership, created date).
+export interface ItemDetail extends ItemCardData {
+  contentType: ContentType;
+  content: string | null;
+  url: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  language: string | null;
+  collections: { id: string; name: string }[];
+  createdAt: Date;
+}
+
+// Wire shape of ItemDetail as it arrives from GET /api/items/[id]: JSON has no
+// Date, so the timestamps come back as ISO strings.
+export type ItemDetailPayload = Omit<
+  ItemDetail,
+  "createdAt" | "updatedAt"
+> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+const itemDetailSelect = {
+  ...itemSelect,
+  contentType: true,
+  content: true,
+  url: true,
+  fileUrl: true,
+  fileName: true,
+  fileSize: true,
+  language: true,
+  createdAt: true,
+  collections: {
+    select: { collection: { select: { id: true, name: true } } },
+    orderBy: { addedAt: "asc" },
+  },
+} as const;
+
+// Full detail for one item, fetched when the drawer opens. The `userId` is part
+// of the lookup rather than a check on the result, so another account's item is
+// indistinguishable from one that doesn't exist.
+export async function getItemDetail(
+  userId: string,
+  itemId: string
+): Promise<ItemDetail | null> {
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: itemDetailSelect,
+  });
+
+  if (!item) return null;
+
+  return {
+    ...toCardData(item),
+    contentType: item.contentType,
+    content: item.content,
+    url: item.url,
+    fileUrl: item.fileUrl,
+    fileName: item.fileName,
+    fileSize: item.fileSize,
+    language: item.language,
+    collections: item.collections.map((entry) => entry.collection),
+    createdAt: item.createdAt,
+  };
 }
 
 export interface ItemTypeSummary {

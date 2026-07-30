@@ -1,16 +1,43 @@
-# Current Feature
+# Current Feature: Item Drawer
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Right-side slide-in drawer (shadcn `Sheet`, `side="right"`) is the item detail view —
+  no separate item detail page.
+- Clicking an item card opens the drawer with that item's full data; works from both the
+  dashboard (`ItemRow`) and the items list page (`ItemCard`).
+- Action bar with Favorite (star, yellow when active), Pin, Copy, then Edit (pencil) and
+  Delete (trash) right-aligned — layout per the screenshot. Display only for now.
+- Drawer body shows: type icon + title, type badge + language badge, Description,
+  Content, Tags, Collections, and Details (Created / Updated dates).
+- Client wrapper component owns drawer open/selected state, since the pages are server
+  components.
+- Full detail (content, language, collections) is fetched on click from
+  `GET /api/items/[id]`; the query function lives in `src/lib/db/items.ts` and the route
+  does the auth check.
+- Skeleton/loading state renders in the drawer while the fetch is in flight.
+- Feels snappy: no page navigation, card data already on screen is reused for the header.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- Spec: `context/features/item-drawer-spec.md`. Visual reference:
+  `context/screenshots/dashboard-ui-drawer.png`.
+- Scope is the **detail display only** — the code editor, per-type content rendering, and
+  wiring the action bar to real mutations come in later features.
+- Card-level data (title, description, tags, pin/favorite) is still fetched by the server
+  components as it is today; the drawer fetch adds only the fields cards don't carry.
+- `Sheet` is not in `src/components/ui/` yet — add via `npx shadcn add sheet` (radix-nova).
+- API route (not a server action) is chosen deliberately per the spec; matches
+  `context/coding-standards.md` for a read endpoint a client component calls.
+- Related open item from the Items List View feature: `ItemCard` currently links to
+  `/items/[type]/[id]` and `ItemRow` to `/items/[id]`, both of which 404. This feature
+  replaces navigation with the drawer, so those hrefs should go away.
+- Unit tests: the API route's auth check / not-found behavior and any new pure helper are
+  in scope; the drawer components are not (no component tests in this project).
 
 ## History
 

@@ -1,8 +1,10 @@
-import Link from "next/link";
+"use client";
+
 import { Pin, Star } from "lucide-react";
 
+import { useItemDrawer } from "@/components/items/ItemDrawerProvider";
 import { type ItemCardData } from "@/lib/db/items";
-import { getSystemTypeStyle, typeSlug } from "@/lib/item-types";
+import { getSystemTypeStyle } from "@/lib/item-types";
 import { cn } from "@/lib/utils";
 
 function formatDate(value: Date) {
@@ -17,16 +19,21 @@ function formatDate(value: Date) {
 // Grid tile for the /items/[type] listing. Same data as the dashboard's
 // ItemRow, laid out for a card grid instead of a stacked list; the left accent
 // comes from the item's own type, not a collection's dominant type.
+//
+// Clicking opens the item drawer rather than navigating — the drawer is the
+// detail view, so there is no item page to link to.
 export function ItemCard({ item }: { item: ItemCardData }) {
+  const { openItem } = useItemDrawer();
   const { icon: Icon, iconColor, borderColor } = getSystemTypeStyle(
     item.typeName
   );
 
   return (
-    <Link
-      href={`/items/${typeSlug(item.typeName)}/${item.id}`}
+    <button
+      type="button"
+      onClick={() => openItem(item)}
       className={cn(
-        "flex h-full flex-col gap-3 rounded-xl border border-l-4 border-border bg-card p-5 transition-colors hover:bg-accent/50",
+        "flex h-full flex-col gap-3 rounded-xl border border-l-4 border-border bg-card p-5 text-left transition-colors hover:bg-accent/50",
         borderColor
       )}
     >
@@ -69,6 +76,6 @@ export function ItemCard({ item }: { item: ItemCardData }) {
           ))}
         </div>
       )}
-    </Link>
+    </button>
   );
 }
