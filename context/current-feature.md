@@ -1,43 +1,16 @@
-# Current Feature: Item Drawer
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Right-side slide-in drawer (shadcn `Sheet`, `side="right"`) is the item detail view —
-  no separate item detail page.
-- Clicking an item card opens the drawer with that item's full data; works from both the
-  dashboard (`ItemRow`) and the items list page (`ItemCard`).
-- Action bar with Favorite (star, yellow when active), Pin, Copy, then Edit (pencil) and
-  Delete (trash) right-aligned — layout per the screenshot. Display only for now.
-- Drawer body shows: type icon + title, type badge + language badge, Description,
-  Content, Tags, Collections, and Details (Created / Updated dates).
-- Client wrapper component owns drawer open/selected state, since the pages are server
-  components.
-- Full detail (content, language, collections) is fetched on click from
-  `GET /api/items/[id]`; the query function lives in `src/lib/db/items.ts` and the route
-  does the auth check.
-- Skeleton/loading state renders in the drawer while the fetch is in flight.
-- Feels snappy: no page navigation, card data already on screen is reused for the header.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- Spec: `context/features/item-drawer-spec.md`. Visual reference:
-  `context/screenshots/dashboard-ui-drawer.png`.
-- Scope is the **detail display only** — the code editor, per-type content rendering, and
-  wiring the action bar to real mutations come in later features.
-- Card-level data (title, description, tags, pin/favorite) is still fetched by the server
-  components as it is today; the drawer fetch adds only the fields cards don't carry.
-- `Sheet` is not in `src/components/ui/` yet — add via `npx shadcn add sheet` (radix-nova).
-- API route (not a server action) is chosen deliberately per the spec; matches
-  `context/coding-standards.md` for a read endpoint a client component calls.
-- Related open item from the Items List View feature: `ItemCard` currently links to
-  `/items/[type]/[id]` and `ItemRow` to `/items/[id]`, both of which 404. This feature
-  replaces navigation with the drawer, so those hrefs should go away.
-- Unit tests: the API route's auth check / not-found behavior and any new pure helper are
-  in scope; the drawer components are not (no component tests in this project).
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -445,3 +418,102 @@ In Progress
   `src/lib/db/*` exclusion the Vitest pass recorded; (3) the dev console logs a pre-existing `pg`
   SSL-mode deprecation warning (`sslmode=require` in `DATABASE_URL` changes meaning in pg v9 /
   pg-connection-string v3).
+- Item Drawer — DONE on `feature/item-drawer`, committed (`7977c71`) and merged to main
+  (`a659d92`); branch deleted. Spec: `context/features/item-drawer-spec.md`; visual reference
+  `context/screenshots/dashboard-ui-drawer.png`. Clicking an item card now opens a right-side
+  ShadCN `Sheet` with the item's full detail — **the drawer is the item detail view, there is no
+  item page**. This closes the dead-link note from Items List View: `ItemCard` pointed at
+  `/items/[type]/[id]` and `ItemRow` at `/items/[id]`, both 404s, and both hrefs are gone.
+  Deliberately *ahead* of `docs/item-crud-architecture.md`, which recommended shipping dedicated
+  routes first and wrapping in a `Sheet` later — the spec asked for the drawer directly, and since
+  this is read-only display (not the `ItemForm` that doc was reasoning about) the "don't build both
+  at once" warning doesn't bite.
+  **Components added:** `npx shadcn add sheet skeleton` (radix-nova) → `src/components/ui/sheet.tsx`,
+  `skeleton.tsx`; `button.tsx` was skipped as identical.
+  **Query:** `getItemDetail(userId, itemId)` in `src/lib/db/items.ts` — the `ItemCardData` fields
+  plus `contentType`, `content`, `url`, `fileUrl`/`fileName`/`fileSize`, `language`, `collections`
+  (flattened from the `ItemCollection` join, ordered by `addedAt`) and `createdAt`. Reuses the
+  shared `itemSelect` via spread. **`userId` is part of the `where` clause, not a check on the
+  result**, so another account's item is indistinguishable from one that doesn't exist. New
+  `ItemDetail extends ItemCardData`, plus `ItemDetailPayload` — the same shape with `createdAt`/
+  `updatedAt` as strings, since JSON has no Date. `ContentType` is imported from
+  `@/generated/prisma/enums` (an 18-line standalone module with no imports, safe to reach from a
+  client component) rather than duplicating the enum.
+  **API:** `GET /api/items/[id]` (`src/app/api/items/[id]/route.ts`) — awaits `params` (Next 16
+  Promise), resolves the user from `auth()` and never from the request, 401 / 404 / 500 in the
+  project's `{ success, data|error }` shape, underlying errors logged not returned. A route rather
+  than a server action per the spec, matching `context/coding-standards.md` for a read a client
+  component calls. Note it is **not** covered by `src/proxy.ts` (its matcher is `/items/:path*`,
+  not `/api/items/*`), so the route's own 401 is the only gate — verified by curl.
+  **State:** `src/components/items/ItemDrawerProvider.tsx` holds `open` / `card` / `detail` /
+  `error` and exposes `openItem(card)` through context; mounted once inside `SidebarProvider` in
+  `src/app/(dashboard)/layout.tsx`, so one drawer instance serves every section that lists items
+  and the pages stay server components. `useItemDrawer()` throws outside the provider, matching
+  `useSidebar`. **The fetch runs in the click handler, not an effect** — the effect version is what
+  was written first and `react-hooks/set-state-in-effect` rejects it ("Calling setState
+  synchronously within an effect can trigger cascading renders"), which is also the better design
+  here since "fetch on click" is literally the requirement. An `AbortController` in a ref is
+  aborted on a new open and on close, so a slow response for a card the user has closed or replaced
+  can't land in the drawer.
+  **Display:** `src/components/items/ItemDrawer.tsx` — header (type icon tile, title, type badge +
+  language badge), action bar, then Description / Content / Tags / Collections / Details
+  (Created / Updated, UTC-safe long dates). The header renders **instantly from the card data
+  already on screen** and only the body skeletons, which is what makes it feel snappy. `ItemCard`
+  and `ItemRow` became `"use client"` `<button>`s calling `openItem` (`text-left`, plus `w-full` on
+  the row since a button doesn't stretch like the `Link` did).
+  **Three implementation decisions worth recording.** (1) *Copy is functional, the other four
+  actions are not.* Favorite/Pin/Edit/Delete render enabled with no handler, following the
+  `Topbar`'s display-only precedent; Copy needs no server round trip and the content is already in
+  the drawer, so leaving it dead would have been worse. It is disabled while loading and when there
+  is nothing to copy. (2) *Content is one section, not per-type rendering.* It shows
+  `content ?? url ?? fileName` in a mono `<pre>`; a link item would otherwise show an empty Content
+  section, and real per-type display (highlighting, markdown, image preview, file download) is the
+  later feature the architecture doc plans. (3) *Pinned state uses `fill-current`, not a second
+  color* — the spec only specifies yellow for the favorite star, and a second accent would compete
+  with it.
+  **Two bugs the browser pass caught, both invisible to the build.** (a) `SheetContent`'s width
+  defaults are data-attribute-scoped (`data-[side=right]:w-3/4`, `data-[side=right]:sm:max-w-sm`),
+  so a plain `sm:max-w-xl` loses on specificity and `cn`/tailwind-merge can't dedupe across
+  different variants — the panel stayed 384px and code was clipped mid-token. The override now
+  carries the same `data-[side=right]:` prefix, with a comment saying why. (b) At 390px the five
+  actions overflowed: "Edit" was clipped and Delete was off-screen entirely. Fixed with
+  `flex-wrap` on the action row plus full width below `sm`.
+  **Seed:** `SeedItem` gained optional `tags?: string[]` (connected via `connectOrCreate`, so items
+  share tag rows) and `isFavorite?: boolean`. The seed had **no tags at all and no favorited
+  items**, so the drawer's Tags section and the yellow star — and `ItemCard`'s tag row, which has
+  never rendered since it was written — could not be exercised. Tagged five items across snippets/
+  prompts/commands/links; same rationale and precedent as the Stats & Sidebar pass adding
+  `isPinned`/collection favorites. Re-seeded the Neon dev branch: still 5 collections / 18 items.
+  No schema/migration change, no new dependency.
+  **Tests:** 10 new (102 total, 8 files). `src/app/api/items/[id]/route.test.ts` (6) — unauthenticated
+  caller 401s **before** the query is called, session with no `user.id` also 401s, the lookup uses
+  the session id rather than anything from the request, 200 shape, missing/other-owner → 404, and a
+  throwing query → 500 with a generic message. `src/lib/db/items.test.ts` (4) — `getItemDetail`'s
+  ownership filter, `null` on no match, and the type/tag/collection flattening; plus one for
+  `getItemsByType`'s `isSystem: true` filter, which the previous feature's notes had flagged as
+  untested. **Mutation-checked:** dropping `userId` from `getItemDetail`'s `where` fails exactly one
+  test, and the source was restored. Not tested, deliberately: the two drawer components (no jsdom /
+  React plugin, and `vitest.config.ts` matches `.ts` only, which is how that rule is enforced);
+  `contentValue()` and `formatFullDate()` inside `ItemDrawer.tsx` (a two-term `??` chain and the same
+  formatter already unexported in `ItemCard`/`ItemRow` — extracting either just to make it importable
+  would be churn for a test that can't fail); `prisma/seed.ts`; and Date→ISO serialization in the
+  response, which is `NextResponse.json` behavior rather than ours.
+  Gate: `npm test` 102/102, lint clean, `npm run typecheck` clean, `npm run build` passes.
+  **Verified in the browser** against the seeded demo user: drawer opens from dashboard Pinned/Recent
+  rows and from `/items/[type]` cards; snippet with code, `typescript` badge, three tags, collection
+  and dates; link item showing its URL in Content with no language badge; Copy writes to the
+  clipboard (asserted `navigator.clipboard.readText()`) and toasts; loading state confirmed against a
+  throttled fetch (title present from card data, 6 skeleton blocks, Copy disabled); error branch shows
+  "Item not found."; unauthenticated `curl /api/items/x` → 401; Escape closes; switching items swaps
+  content with no stale data; 390px full-width with the action bar wrapping; 1440px at 576px wide.
+  Console clean apart from the pre-existing `pg` SSL warning.
+  Notes for later: (1) **the provider's abort logic has no automated test** — it is browser-verified
+  only, and won't be testable until the project takes on a DOM environment; (2) the four inert action
+  buttons look clickable and do nothing, which is the spec's intent but is the most likely thing to
+  read as a bug before the mutations land; (3) `/items` (all types) and `/collections` are still
+  unrouted, so the dashboard's two "View all" links and the sidebar's "View all collections" remain
+  dead; (4) the drawer refetches on every open with no caching — fine at this scale, but a
+  `Map` keyed by item id in the provider is the cheap win if it ever feels slow; (5) `ItemCard` and
+  `ItemRow` are now client components, so `ItemCardData` is imported type-only from `@/lib/db/items`
+  (which imports Prisma) — SWC elides it and `Sidebar` already did the same with `ItemTypeSummary`,
+  but if that ever leaks into a bundle the fix is moving the shared types to `src/types/items.ts`.
