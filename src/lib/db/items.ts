@@ -164,6 +164,81 @@ export async function getItemDetail(
   };
 }
 
+// ItemDetail as it crosses the wire to the client: JSON has no Date, so the
+// timestamps become ISO strings. Used by GET /api/items/[id] implicitly (via
+// NextResponse.json) and by updateItem explicitly, so both fill the drawer's
+// state with the same shape.
+export function toItemDetailPayload(detail: ItemDetail): ItemDetailPayload {
+  return {
+    ...detail,
+    createdAt: detail.createdAt.toISOString(),
+    updatedAt: detail.updatedAt.toISOString(),
+  };
+}
+
+// The fields the edit form can change. Type, collections and timestamps are not
+// editable here; `tags` is the complete replacement set, not a delta.
+export interface ItemUpdateData {
+  title: string;
+  description: string | null;
+  content: string | null;
+  url: string | null;
+  language: string | null;
+  tags: string[];
+}
+
+// Applies an edit to one item and returns its refreshed detail, so the drawer
+// can re-render without a second round trip. `userId` sits in the `where`
+// alongside the id, so an item belonging to someone else matches nothing and
+// comes back as null rather than being updated.
+export async function updateItem(
+  userId: string,
+  itemId: string,
+  data: ItemUpdateData
+): Promise<ItemDetail | null> {
+  try {
+    const item = await prisma.item.update({
+      where: { id: itemId, userId },
+      data: {
+        title: data.title,
+        description: data.description,
+        content: data.content,
+        url: data.url,
+        language: data.language,
+        // Replace the tag set wholesale: `set: []` drops the existing links
+        // first, then connectOrCreate re-links (creating any tag row that
+        // doesn't exist yet, so items share tags).
+        tags: {
+          set: [],
+          connectOrCreate: data.tags.map((name) => ({
+            where: { name },
+            create: { name },
+          })),
+        },
+      },
+      select: itemDetailSelect,
+    });
+
+    return {
+      ...toCardData(item),
+      contentType: item.contentType,
+      content: item.content,
+      url: item.url,
+      fileUrl: item.fileUrl,
+      fileName: item.fileName,
+      fileSize: item.fileSize,
+      language: item.language,
+      collections: item.collections.map((entry) => entry.collection),
+      createdAt: item.createdAt,
+    };
+  } catch (error) {
+    // P2025 = "record to update not found", which here means the id doesn't
+    // exist *or* it isn't this user's. Both answer identically.
+    if ((error as { code?: string }).code === "P2025") return null;
+    throw error;
+  }
+}
+
 export interface ItemTypeSummary {
   // System item-type name (e.g. "snippet"), used for icon/label styling.
   name: string;
