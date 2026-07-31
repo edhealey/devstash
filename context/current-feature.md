@@ -1,56 +1,16 @@
-# Current Feature: Item Drawer — Edit Mode
+# Current Feature
 
 ## Status
 
-In Progress — implemented and verified; awaiting review/commit
+Not Started
 
 ## Goals
 
-- Spec: `context/features/item-drawer-edit-spec.md`
-- The Edit (pencil) button in the item drawer's action bar switches the **same open
-  drawer** from view mode to inline edit mode — no new route, no second drawer.
-- In edit mode the action bar is replaced by **Save** and **Cancel**. Cancel discards
-  changes and returns to view mode; Save persists, returns to view mode, and refreshes
-  the drawer data from the action's response (no second fetch).
-- Sonner toast on save success and on error.
-- Editable for all types: **Title** (text, required), **Description** (textarea,
-  optional), **Tags** (comma-separated text input → tag array on save).
-- Type-specific fields, shown only for the relevant type:
-  - **Content** (textarea) — snippet, prompt, command, note
-  - **Language** (text) — snippet, command
-  - **URL** (text) — link
-- Display-only in edit mode: item type, collections, created/updated dates.
-- New server action `updateItem(itemId, data)` in `src/actions/items.ts` returning the
-  project's `{ success, data, error }` shape: Zod-validate the payload, resolve the user
-  from `auth()` (never the client), enforce ownership, then call the query function.
-- New query function `updateItem` in `src/lib/db/items.ts`: tags are disconnected then
-  connect-or-created; returns the updated `ItemDetail` so the drawer refreshes without a
-  second fetch.
-- Zod validation rules: `title` non-empty trimmed string; `description`, `content`,
-  `language` optional string-or-null; `url` valid URL string or null; `tags` array of
-  trimmed non-empty strings. Zod errors come back in the `error` field for display.
-- After a successful save, call `router.refresh()` so the card list behind the drawer
-  reflects the change.
-- Unit tests for the new server action (validation branches, auth/ownership, error
-  shape) per the project's actions-and-utilities-only testing scope.
+<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
 
 ## Notes
 
-- **Zod is not currently a dependency** — the spec mandates it ("per coding standards"),
-  so this feature introduces it. Prior auth routes used manual validation precisely
-  because Zod wasn't installed (noted in the Email Verification history entry as "worth
-  revisiting if Zod lands project-wide"). This is that moment.
-- Keep it simple: no form library. Controlled inputs with local state in the drawer.
-- Client-side guard: disable Save when the title is empty. Server-side Zod remains the
-  source of truth.
-- The Content textarea is a plain textarea — a code editor is a later feature.
-- This makes the drawer's Edit button live. Favorite / Pin / Delete stay inert (see the
-  Item Drawer history entry: the four non-Copy actions render enabled with no handler).
-- Edit state lives alongside the existing `ItemDrawerProvider` state (`open` / `card` /
-  `detail` / `error`); mode must reset to view when the drawer closes or switches items,
-  or a stale form could carry across.
-- `ItemDrawer.tsx` is already the largest component in `src/components/items/` — watch
-  for splitting the edit form into its own component rather than growing one file.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 
@@ -557,3 +517,101 @@ In Progress — implemented and verified; awaiting review/commit
   `ItemRow` are now client components, so `ItemCardData` is imported type-only from `@/lib/db/items`
   (which imports Prisma) — SWC elides it and `Sidebar` already did the same with `ItemTypeSummary`,
   but if that ever leaks into a bundle the fix is moving the shared types to `src/types/items.ts`.
+- Item Drawer — Edit Mode — DONE on `feature/item-drawer-edit`, committed (`0256a78`) and merged
+  to main (`d8c6ed5`); branch deleted. Spec: `context/features/item-drawer-edit-spec.md`. The
+  drawer's Edit (pencil) button was one of the four inert actions the Item Drawer entry flagged as
+  "the most likely thing to read as a bug"; it is now live. Clicking it swaps the **same open
+  drawer** for an inline form — no new route, no second drawer, no navigation. Save persists and
+  returns to view mode, Cancel discards. **This is the project's first write path for items** and
+  the first mutation the drawer performs.
+  **Zod is now a dependency** (`zod@4`). The spec mandated it "per coding standards", and the
+  Email Verification entry had flagged manual validation as "worth revisiting if Zod lands
+  project-wide" — this is that moment. The existing auth routes were left on their manual
+  validation; converting them is its own chore, not a drive-by.
+  **Server action:** `updateItemAction(itemId, input)` in `src/actions/items.ts` — `auth()` first
+  (unauthenticated returns before the payload is even parsed), then a blank-id guard, then
+  `safeParse`, then the query. Named `...Action` rather than the spec's bare `updateItem` because
+  it imports a query function of that name; matches the `changePasswordAction` /
+  `deleteAccountAction` precedent. Three schema pieces are worth recording. `optionalText`
+  trims and maps whitespace-only or missing to `null`, so an emptied input clears the column
+  instead of storing `""`. `optionalBody` (content) deliberately does **not** trim once the value
+  has any content — trimming would eat a code block's leading indentation and trailing newline.
+  `tags` is the complete replacement set, trimmed, blanks dropped (a trailing comma in the input
+  would otherwise create an empty tag) and de-duplicated via a `Set`, since tag names are unique
+  and `connectOrCreate` would otherwise hit the same row twice. Only the first Zod issue is
+  returned — one message is all the form shows, and for a form this size the first is the
+  actionable one.
+  **Query:** `updateItem(userId, itemId, data)` in `src/lib/db/items.ts`. `userId` sits in the
+  `where` **alongside the id**, same boundary as `getItemDetail`, so another account's item matches
+  nothing rather than being written; Prisma throws P2025 for that case and the helper maps it to
+  `null`, so missing and not-yours answer identically. Tags are replaced wholesale with
+  `set: []` + `connectOrCreate` (the spec's "disconnect then connect-or-create"). Returns the
+  refreshed `ItemDetail`, so the drawer re-renders from the response with no second fetch. Also
+  extracted `toItemDetailPayload` so the action and `GET /api/items/[id]` agree on one wire shape
+  rather than each doing its own Date→ISO conversion.
+  **Registry over conditionals:** `SystemTypeStyle` gained `editFields: readonly EditableField[]`
+  — snippet/command `["content", "language"]`, prompt/note `["content"]`, link `["url"]`,
+  file/image `[]` (until file replacement ships). The form asks the registry which type-specific
+  inputs to render instead of carrying a `switch`, so a new type declares its own fields in the
+  one place types are already defined. The styles table got a `prettier-ignore` to stay one
+  readable line per type instead of ~60.
+  **Components:** `npx shadcn add textarea` (radix-nova) → `src/components/ui/textarea.tsx`. The
+  edit UI went into a **new** `src/components/items/ItemEditForm.tsx` rather than into
+  `ItemDrawer.tsx`, which the working notes had called out as already the largest file in the
+  folder. The form renders the whole panel including its own `SheetHeader`, not just the body —
+  that duplicates a little header markup, but it keeps every field and the Save button sharing one
+  piece of local state without lifting it into `ItemDrawer`. Cancel needs no logic: the form
+  unmounts and its state goes with it. `ItemDrawer` gained nothing but a ternary and four props.
+  **State:** `editing` lives in `ItemDrawerProvider` alongside `open`/`card`/`detail`/`error`, and
+  is reset in **both** `openItem` and `handleOpenChange(false)` — a half-finished edit must not
+  survive a close or a switch to another item. `handleSaved` writes the response into `detail` and
+  back-fills the drawer's `card` snapshot (title/description/tags) so the header doesn't flash
+  stale text, then `router.refresh()` re-renders the server components behind the drawer.
+  **Two changes came out of the `/feature review` pass, both after the browser verification.**
+  (1) **`z.url()` accepts `javascript:` and `data:`** — confirmed against the installed zod 4.4,
+  which parses `javascript:alert(1)` as a valid URL and only rejects scheme-less input like
+  `example.com`. No live XSS today, because the drawer renders a link's URL as text inside a
+  `<pre>` and never as an `href` — but this is stored data that will outlive that rendering
+  decision, and link items becoming anchors is close to inevitable. The refine now uses
+  `z.url({ protocol: /^https?$/ })`. (2) **The error path only set inline text**, while the spec
+  asked for a toast on success *and* error; it now does both — the toast is what the user notices,
+  the inline copy is what stays on screen next to the field they have to fix.
+  **Deviation from the spec, accepted:** the spec lists item type, collections and created/updated
+  dates as "display only in edit mode". Type is shown (the badge); collections and dates are
+  **not** — they're replaced by the line "Type, collections and dates are managed outside this
+  form." Shipped as-is deliberately rather than padding the form with read-only sections.
+  No schema/migration change. Favorite / Pin / Delete remain inert.
+  **Tests:** 28 new (130 total, 9 files). `src/actions/items.test.ts` (22) — unauthenticated caller
+  and a session with no `user.id` both rejected **before** the query is called; the write is scoped
+  to the session user, not anything the caller sent; blank item id; missing/unowned → "Item not
+  found."; a throwing query → a generic message that doesn't leak the Prisma error; and the
+  validation branches (empty and whitespace-only title, title trimmed, 200-char cap, cleared
+  optional fields stored as `null`, content whitespace **preserved** but whitespace-only treated as
+  cleared, tags trimmed/de-blanked/de-duplicated, and the URL scheme table above). `src/lib/db/
+  items.test.ts` (6) — ownership in the `where`, `set: []` present (without it, removing a tag in
+  the form would leave it attached), the exact `data` key set so a stray key can't silently widen
+  what an edit can change, P2025 → `null`, non-P2025 rethrown, and the refreshed detail shape; plus
+  `toItemDetailPayload`. **Mutation-checked twice:** reverting `z.url({ protocol })` to a bare
+  `z.url()` fails exactly the two scheme tests and nothing else, and the source was restored.
+  Not tested, deliberately: `ItemEditForm` and `ItemDrawer` (no jsdom / React plugin, and
+  `vitest.config.ts` matches `.ts` only — that's how the no-component-tests rule is enforced), so
+  the error toast, the Save-disabled-while-blank guard, `parseTags`, and the edit-state reset have
+  no automated coverage.
+  Gate: `npm test` 130/130, lint clean, `npm run typecheck` clean, `npm run build` passes.
+  **Verified in the browser** during implementation against the seeded demo user (edit round trip
+  per type, tag add/remove, cleared fields, cancel, card list refreshed behind the drawer). The two
+  review changes above landed **after** that pass and were verified by tests and the build only —
+  the error toast in particular has never been seen rendered.
+  Notes for later: (1) **orphaned `Tag` rows accumulate** — `set: []` detaches but nothing deletes
+  a tag left referenced by zero items, so the table only grows; pre-existing in the seed's
+  `connectOrCreate` too. (2) **Non-editable fields round-trip through the client:** for a type that
+  doesn't show an input, the form resends `detail.content` / `detail.url` / `detail.language`, so a
+  crafted request could set `url` on a snippet. Low severity (own item, nullable column) and
+  currently *forced* by the schema — the fields are `.nullish()` with a null-coercing transform, so
+  omitting a key would wipe it. Tightening means making them `.optional()` (undefined = leave
+  alone) and building the Prisma `data` from present keys only. (3) Title is capped at 200 but
+  description and content are unbounded — content should be, description probably shouldn't.
+  (4) Closing the drawer mid-edit (Escape or overlay click) silently discards unsaved changes with
+  no confirm. (5) `<Input type="url">` means the browser's native tooltip preempts the Zod message
+  for scheme-less input like `example.com`. (6) The form's field ids are fixed strings
+  (`item-title`, …), which is fine only because exactly one drawer instance is ever mounted.
