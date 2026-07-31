@@ -32,6 +32,9 @@ export function ItemDrawerProvider({
   const [card, setCard] = useState<ItemCardData | null>(null);
   const [detail, setDetail] = useState<ItemDetailPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Reset whenever the drawer opens or closes, so a half-finished edit can't
+  // carry over to the next item.
+  const [editing, setEditing] = useState(false);
   // Aborting keeps a slow response for a card the user has since closed (or
   // replaced with another) from landing in the drawer.
   const requestRef = useRef<AbortController | null>(null);
@@ -44,6 +47,7 @@ export function ItemDrawerProvider({
     setCard(item);
     setDetail(null);
     setError(null);
+    setEditing(false);
     setOpen(true);
 
     async function load() {
@@ -71,8 +75,26 @@ export function ItemDrawerProvider({
   const handleOpenChange = useCallback((next: boolean) => {
     if (!next) {
       requestRef.current?.abort();
+      setEditing(false);
     }
     setOpen(next);
+  }, []);
+
+  // The action returns the refreshed detail, so the drawer re-renders from the
+  // response instead of refetching.
+  const handleSaved = useCallback((updated: ItemDetailPayload) => {
+    setDetail(updated);
+    setCard((current) =>
+      current
+        ? {
+            ...current,
+            title: updated.title,
+            description: updated.description,
+            tags: updated.tags,
+          }
+        : current
+    );
+    setEditing(false);
   }, []);
 
   return (
@@ -84,6 +106,10 @@ export function ItemDrawerProvider({
         card={card}
         detail={detail}
         error={error}
+        editing={editing}
+        onEdit={() => setEditing(true)}
+        onCancelEdit={() => setEditing(false)}
+        onSaved={handleSaved}
       />
     </ItemDrawerContext.Provider>
   );

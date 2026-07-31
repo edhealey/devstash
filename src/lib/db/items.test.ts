@@ -7,13 +7,19 @@ const { prisma } = vi.hoisted(() => ({
     item: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
 
-import { getItemDetail, getItemsByType } from "@/lib/db/items";
+import {
+  getItemDetail,
+  getItemsByType,
+  toItemDetailPayload,
+  updateItem,
+} from "@/lib/db/items";
 
 const ROW = {
   id: "item_1",
@@ -35,9 +41,19 @@ const ROW = {
   collections: [{ collection: { id: "col_1", name: "React Patterns" } }],
 };
 
+const UPDATE_DATA = {
+  title: "useAuth hook",
+  description: "Custom authentication hook",
+  content: "export function useAuth() {}",
+  url: null,
+  language: "typescript",
+  tags: ["react", "auth"],
+};
+
 beforeEach(() => {
   prisma.item.findFirst.mockResolvedValue(ROW);
   prisma.item.findMany.mockResolvedValue([]);
+  prisma.item.update.mockResolvedValue(ROW);
 });
 
 describe("getItemDetail", () => {
@@ -78,6 +94,89 @@ describe("getItemDetail", () => {
       collections: [{ id: "col_1", name: "React Patterns" }],
       createdAt: ROW.createdAt,
       updatedAt: ROW.updatedAt,
+    });
+  });
+});
+
+describe("updateItem", () => {
+  // Same security boundary as getItemDetail: ownership is part of the `where`,
+  // so another account's item matches nothing instead of being written.
+  it("scopes the update to the owner as well as the id", async () => {
+    await updateItem("user_1", "item_1", UPDATE_DATA);
+
+    expect(prisma.item.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "item_1", userId: "user_1" } })
+    );
+  });
+
+  it("replaces the tag set rather than adding to it", async () => {
+    await updateItem("user_1", "item_1", UPDATE_DATA);
+
+    const { data } = prisma.item.update.mock.calls[0][0];
+    // `set: []` has to be present, or removing a tag in the form would leave it
+    // attached to the item.
+    expect(data.tags).toEqual({
+      set: [],
+      connectOrCreate: [
+        { where: { name: "react" }, create: { name: "react" } },
+        { where: { name: "auth" }, create: { name: "auth" } },
+      ],
+    });
+  });
+
+  it("writes the editable fields and nothing else", async () => {
+    await updateItem("user_1", "item_1", UPDATE_DATA);
+
+    const { data } = prisma.item.update.mock.calls[0][0];
+    // Type, collections, favorite/pin and timestamps are not this form's to
+    // change; a stray key here would silently widen what an edit can do.
+    expect(Object.keys(data).sort()).toEqual([
+      "content",
+      "description",
+      "language",
+      "tags",
+      "title",
+      "url",
+    ]);
+  });
+
+  it("returns null when the item is missing or owned by someone else", async () => {
+    prisma.item.update.mockRejectedValue(
+      Object.assign(new Error("Record to update not found."), { code: "P2025" })
+    );
+
+    expect(await updateItem("user_1", "item_1", UPDATE_DATA)).toBeNull();
+  });
+
+  it("rethrows failures that aren't a missing record", async () => {
+    prisma.item.update.mockRejectedValue(
+      Object.assign(new Error("connection lost"), { code: "P1001" })
+    );
+
+    await expect(updateItem("user_1", "item_1", UPDATE_DATA)).rejects.toThrow(
+      "connection lost"
+    );
+  });
+
+  it("returns the refreshed detail so the drawer needs no second fetch", async () => {
+    const detail = await updateItem("user_1", "item_1", UPDATE_DATA);
+
+    expect(detail).toMatchObject({
+      id: "item_1",
+      typeName: "snippet",
+      tags: ["react", "auth"],
+      collections: [{ id: "col_1", name: "React Patterns" }],
+    });
+  });
+});
+
+describe("toItemDetailPayload", () => {
+  it("serializes both timestamps to ISO strings", async () => {
+    const detail = await getItemDetail("user_1", "item_1");
+
+    expect(toItemDetailPayload(detail!)).toMatchObject({
+      createdAt: "2026-01-15T00:00:00.000Z",
+      updatedAt: "2026-02-01T00:00:00.000Z",
     });
   });
 });

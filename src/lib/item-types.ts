@@ -13,6 +13,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+// Type-specific fields the item edit form shows. Title, description and tags
+// are editable for every type and so aren't listed here.
+export type EditableField = "content" | "language" | "url";
+
 export interface SystemTypeStyle {
   // Plural display label used in the sidebar (e.g. "Snippets")
   label: string;
@@ -27,16 +31,22 @@ export interface SystemTypeStyle {
   dotColor: string;
   // Pro-only feature (File and Image types)
   isPro?: boolean;
+  // Which type-specific fields the edit form offers for this type. Keeping it
+  // here rather than in the form means a new type declares its own fields.
+  editFields: readonly EditableField[];
 }
 
+// One line per type, kept as a readable table — File and Image have no
+// type-specific editable fields until file replacement ships.
+// prettier-ignore
 export const SYSTEM_TYPE_STYLES: Record<string, SystemTypeStyle> = {
-  snippet: { label: "Snippets", slug: "snippets", icon: Code, iconColor: "text-blue-400", borderColor: "border-l-blue-500", dotColor: "bg-blue-500" },
-  prompt: { label: "Prompts", slug: "prompts", icon: Sparkles, iconColor: "text-purple-400", borderColor: "border-l-purple-500", dotColor: "bg-purple-500" },
-  command: { label: "Commands", slug: "commands", icon: Terminal, iconColor: "text-orange-400", borderColor: "border-l-orange-500", dotColor: "bg-orange-500" },
-  note: { label: "Notes", slug: "notes", icon: StickyNote, iconColor: "text-yellow-400", borderColor: "border-l-yellow-500", dotColor: "bg-yellow-500" },
-  file: { label: "Files", slug: "files", icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600", dotColor: "bg-neutral-600", isPro: true },
-  image: { label: "Images", slug: "images", icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500", dotColor: "bg-pink-500", isPro: true },
-  link: { label: "Links", slug: "links", icon: Link, iconColor: "text-green-400", borderColor: "border-l-green-500", dotColor: "bg-green-500" },
+  snippet: { label: "Snippets", slug: "snippets", icon: Code, iconColor: "text-blue-400", borderColor: "border-l-blue-500", dotColor: "bg-blue-500", editFields: ["content", "language"] },
+  prompt: { label: "Prompts", slug: "prompts", icon: Sparkles, iconColor: "text-purple-400", borderColor: "border-l-purple-500", dotColor: "bg-purple-500", editFields: ["content"] },
+  command: { label: "Commands", slug: "commands", icon: Terminal, iconColor: "text-orange-400", borderColor: "border-l-orange-500", dotColor: "bg-orange-500", editFields: ["content", "language"] },
+  note: { label: "Notes", slug: "notes", icon: StickyNote, iconColor: "text-yellow-400", borderColor: "border-l-yellow-500", dotColor: "bg-yellow-500", editFields: ["content"] },
+  file: { label: "Files", slug: "files", icon: File, iconColor: "text-neutral-300", borderColor: "border-l-neutral-600", dotColor: "bg-neutral-600", isPro: true, editFields: [] },
+  image: { label: "Images", slug: "images", icon: Image, iconColor: "text-pink-400", borderColor: "border-l-pink-500", dotColor: "bg-pink-500", isPro: true, editFields: [] },
+  link: { label: "Links", slug: "links", icon: Link, iconColor: "text-green-400", borderColor: "border-l-green-500", dotColor: "bg-green-500", editFields: ["url"] },
 };
 
 // Canonical ordering for rendering type icons consistently across cards.
@@ -63,6 +73,7 @@ const FALLBACK_STYLE: SystemTypeStyle = {
   iconColor: "text-muted-foreground",
   borderColor: "border-l-border",
   dotColor: "bg-muted-foreground",
+  editFields: [],
 };
 
 export function getSystemTypeStyle(name: string): SystemTypeStyle {

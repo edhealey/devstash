@@ -1,16 +1,56 @@
-# Current Feature
+# Current Feature: Item Drawer — Edit Mode
 
 ## Status
 
-Not Started
+In Progress — implemented and verified; awaiting review/commit
 
 ## Goals
 
-<!-- Populate with bullet points of what success looks like when a feature is loaded. -->
+- Spec: `context/features/item-drawer-edit-spec.md`
+- The Edit (pencil) button in the item drawer's action bar switches the **same open
+  drawer** from view mode to inline edit mode — no new route, no second drawer.
+- In edit mode the action bar is replaced by **Save** and **Cancel**. Cancel discards
+  changes and returns to view mode; Save persists, returns to view mode, and refreshes
+  the drawer data from the action's response (no second fetch).
+- Sonner toast on save success and on error.
+- Editable for all types: **Title** (text, required), **Description** (textarea,
+  optional), **Tags** (comma-separated text input → tag array on save).
+- Type-specific fields, shown only for the relevant type:
+  - **Content** (textarea) — snippet, prompt, command, note
+  - **Language** (text) — snippet, command
+  - **URL** (text) — link
+- Display-only in edit mode: item type, collections, created/updated dates.
+- New server action `updateItem(itemId, data)` in `src/actions/items.ts` returning the
+  project's `{ success, data, error }` shape: Zod-validate the payload, resolve the user
+  from `auth()` (never the client), enforce ownership, then call the query function.
+- New query function `updateItem` in `src/lib/db/items.ts`: tags are disconnected then
+  connect-or-created; returns the updated `ItemDetail` so the drawer refreshes without a
+  second fetch.
+- Zod validation rules: `title` non-empty trimmed string; `description`, `content`,
+  `language` optional string-or-null; `url` valid URL string or null; `tags` array of
+  trimmed non-empty strings. Zod errors come back in the `error` field for display.
+- After a successful save, call `router.refresh()` so the card list behind the drawer
+  reflects the change.
+- Unit tests for the new server action (validation branches, auth/ownership, error
+  shape) per the project's actions-and-utilities-only testing scope.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- **Zod is not currently a dependency** — the spec mandates it ("per coding standards"),
+  so this feature introduces it. Prior auth routes used manual validation precisely
+  because Zod wasn't installed (noted in the Email Verification history entry as "worth
+  revisiting if Zod lands project-wide"). This is that moment.
+- Keep it simple: no form library. Controlled inputs with local state in the drawer.
+- Client-side guard: disable Save when the title is empty. Server-side Zod remains the
+  source of truth.
+- The Content textarea is a plain textarea — a code editor is a later feature.
+- This makes the drawer's Edit button live. Favorite / Pin / Delete stay inert (see the
+  Item Drawer history entry: the four non-Copy actions render enabled with no handler).
+- Edit state lives alongside the existing `ItemDrawerProvider` state (`open` / `card` /
+  `detail` / `error`); mode must reset to view when the drawer closes or switches items,
+  or a stale form could carry across.
+- `ItemDrawer.tsx` is already the largest component in `src/components/items/` — watch
+  for splitting the edit form into its own component rather than growing one file.
 
 ## History
 
